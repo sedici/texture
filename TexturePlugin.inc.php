@@ -13,6 +13,7 @@
  * @brief Substance JATS editor plugin
  *
  */
+//namespace APP\plugins\generic\texture;
 
 use PKP\linkAction\LinkAction;
 use PKP\plugins\GenericPlugin;
