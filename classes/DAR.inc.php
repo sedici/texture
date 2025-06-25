@@ -8,7 +8,11 @@
  */
 
 use PKP\submission\SubmissionFile;
+use APP\submissionFile\Collector as SubmissionFileCollector;
+use PKP\db\DAORegistry;
 
+
+use APP\facades\Repo;
 class DAR {
 
 
@@ -21,7 +25,7 @@ class DAR {
 	 * @return array
 	 */
 	public function construct(DAR $dar, $request, $submissionFile): array {
-
+		error_log("DAR::construct() called");
 		$assets = array();
 		$manuscript = Services::get('file')->fs->read($submissionFile->getData('path'));
 		$manuscript = $dar->createManuscript($manuscript);
@@ -54,6 +58,8 @@ class DAR {
 
 
 	public function createManuscript($manuscript) {
+		error_log("DAR::createManuscript() called");
+
 		$domImpl = new DOMImplementation();
 		$dtd = $domImpl->createDocumentType("article", "-//NLM//DTD JATS (Z39.96) Journal Archiving and Interchange DTD v1.2 20190208//EN", "JATS-archivearticle1.dtd");
 		$editableManuscriptDom = $domImpl->createDocument("", "", $dtd);
@@ -117,7 +123,7 @@ class DAR {
 	 * @return mixed
 	 */
 	public function createManifest($manuscriptXml, &$assets) {
-
+		error_log("DAR::createManifest() called");
 		$dom = new DOMDocument();
 		if (!$dom->loadXML($manuscriptXml)) {
 			fatalError("Unable to load XML document content in DOM in order to generate manifest XML.");
@@ -177,7 +183,7 @@ class DAR {
 	 * @return array
 	 */
 	public function createMediaInfo($request, $assets) {
-
+		error_log("DAR::createMediaInfo() called");
 		$infos = array();
 		$router = $request->getRouter();
 		$dispatcher = $router->getDispatcher();
@@ -187,15 +193,24 @@ class DAR {
 		$submissionId = $request->getUserVar('submissionId');
 		// build mapping to assets file paths
 
-		$dependentFilesIterator = Services::get('submissionFile')->getMany([
+		/*$dependentFilesIterator = Services::get('submissionFile')->getMany([
 			'assocTypes' => [ASSOC_TYPE_SUBMISSION_FILE],
 			'assocIds' => [$submissionFileId],
 			'submissionIds' => [$submissionId],
 			'fileStages' => [SUBMISSION_FILE_DEPENDENT],
 			'includeDependentFiles' => true,
-		]);
+		]);*/
 
-		foreach ($dependentFilesIterator as $asset) {
+		error_log(print_r(DAORegistry::getDAOs(), true));
+
+		$submissionFiles = Repo::submissionFile()
+			->getCollector()
+			->filterBySubmissionIds([$submissionId])
+			->filterByFileStages([SUBMISSION_FILE_DEPENDENT])
+			->getMany(); // ← esto te da los archivos dependientes
+
+
+		foreach ($submissionFiles as $asset) {
 			$url = $dispatcher->url($request, ROUTE_PAGE, null, 'texture', 'media', null, array(
 				'submissionId' => $submissionId,
 				'stageId' => $stageId,
@@ -217,6 +232,7 @@ class DAR {
 	 * @param DOMDocument $dom
 	 */
 	protected function createEmptyMetadata(DOMDocument $dom): void {
+		error_log("DAR::createEmptyMetadata() called");
 		$dom->front = $dom->createElement('front');
 		$dom->article->appendChild($dom->front);
 
@@ -240,7 +256,7 @@ class DAR {
 	 * @return array
 	 */
 	public function getDependentFilePaths($submissionId, $fileId): array {
-
+		error_log("DAR::getDependentFilePaths() called");
 		$dependentFiles = Services::get('submissionFile')->getMany([
 			'assocTypes' => [ASSOC_TYPE_SUBMISSION_FILE],
 			'assocIds' => [$fileId],
