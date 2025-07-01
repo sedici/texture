@@ -14,6 +14,7 @@
  */
 
 use PKP\notification\PKPNotification;
+use PKP\facades\Locale;
 use PKP\security\Role;
 use APP\facades\Repo;
 use PKP\core\JSONMessage;
@@ -298,7 +299,7 @@ class TextureHandler extends Handler {
 		$submissionFile->setData('genreId', (int)$genreId);
 		Services::get('submissionFile')->add($submissionFile, $request);
 		if ($deletePath) unlink($filePath);
-
+		
 	}
 
 	/**
@@ -508,7 +509,7 @@ class TextureHandler extends Handler {
 			exit;
 		}
 
-		$formLocales = PKP\facades\Locale::getSupportedFormLocales();
+		$formLocales = Locale::getSupportedFormLocales();
 		error_log('($_SERVER["REQUEST_METHOD"]' . $_SERVER["REQUEST_METHOD"]);
 		if ($_SERVER["REQUEST_METHOD"] === "DELETE") {
 			
@@ -705,7 +706,6 @@ class TextureHandler extends Handler {
 				return $file->getData('assocType') === ASSOC_TYPE_SUBMISSION_FILE &&
 					$file->getData('assocId') === $submissionFile->getData('id');
 			});
-
 			
 		error_log("🧾 submissionFile actual (el XML): ID=" . $submissionFile->getData('id'));
 		error_log("🔍 fileId recibido: " . $request->getUserVar('fileId'));
@@ -738,49 +738,48 @@ class TextureHandler extends Handler {
 	}
 
 	public function media($args, $request) {
-	error_log('TextureHandler::media called');
+		error_log('TextureHandler::media called');
 
-	$fileId = (int) $request->getUserVar('fileId'); // ← este es el ID que querés servir
-	$assocId = (int) $request->getUserVar('assocId'); // ← este es el XML base (submissionFile)
+		$fileId = (int) $request->getUserVar('fileId'); // ← este es el ID que querés servir
+		$assocId = (int) $request->getUserVar('assocId'); // ← este es el XML base (submissionFile)
 
-	error_log("🔍 fileId recibido: $fileId");
-	error_log("📎 assocId recibido (XML): $assocId");
+		error_log("🔍 fileId recibido: $fileId");
+		error_log("📎 assocId recibido (XML): $assocId");
 
-	$submissionFile = Repo::submissionFile()->get($assocId);
+		$submissionFile = Repo::submissionFile()->get($assocId);
 
-	if (!$submissionFile) {
-		fatalError('Invalid submission file');
-	}
+		if (!$submissionFile) {
+			fatalError('Invalid submission file');
+		}
 
-	$dependentFiles = Repo::submissionFile()
-		->getCollector()
-		->filterBySubmissionIds([$submissionFile->getData('submissionId')])
-		->filterByFileStages([SUBMISSION_FILE_DEPENDENT])
-		->getMany()
-		->filter(function($file) use ($submissionFile) {
-			return $file->getData('assocType') === ASSOC_TYPE_SUBMISSION_FILE &&
-				$file->getData('assocId') === $submissionFile->getData('id');
+		$dependentFiles = Repo::submissionFile()
+			->getCollector()
+			->filterBySubmissionIds([$submissionFile->getData('submissionId')])
+			->filterByFileStages([SUBMISSION_FILE_DEPENDENT])
+			->getMany()
+			->filter(function($file) use ($fileId) {
+        		return $file->getData('fileId') === $fileId;
+			});
+
+		foreach ($dependentFiles as $f) {
+			error_log("📄 Revisando archivo: " . $f->getData('fileId'));
+			error_log("➕ File {$f->getData('fileId')} assocId={$f->getData('assocId')} assocType={$f->getData('assocType')}");
+		}
+
+		$mediaFile = $dependentFiles->first(function ($file) use ($fileId) {
+			return $file->getData('fileId') === $fileId;
 		});
 
-	foreach ($dependentFiles as $f) {
-		error_log("📄 Revisando archivo: " . $f->getData('fileId'));
-		error_log("➕ File {$f->getData('fileId')} assocId={$f->getData('assocId')} assocType={$f->getData('assocType')}");
+		if (!$mediaFile) {
+			error_log('❌ TextureHandler::media mediaFile not found');
+			$request->getDispatcher()->handle404();
+		}
+
+		header('Content-Type:' . $mediaFile->getData('mimetype'));
+		$mediaFileContent = Services::get('file')->fs->read($mediaFile->getData('path'));
+		header('Content-Length: ' . strlen($mediaFileContent));
+		return $mediaFileContent;
 	}
-
-	$mediaFile = $dependentFiles->first(function ($file) use ($fileId) {
-		return $file->getData('fileId') === $fileId;
-	});
-
-	if (!$mediaFile) {
-		error_log('❌ TextureHandler::media mediaFile not found');
-		$request->getDispatcher()->handle404();
-	}
-
-	header('Content-Type:' . $mediaFile->getData('mimetype'));
-	$mediaFileContent = Services::get('file')->fs->read($mediaFile->getData('path'));
-	header('Content-Length: ' . strlen($mediaFileContent));
-	return $mediaFileContent;
-}
 
 
 }
