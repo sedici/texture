@@ -12,15 +12,28 @@
  *
  * @brief Handle requests for Texture plugin
  */
+/*import('lib.pkp.classes.file.FileManager');
+import('lib.pkp.classes.file.SubmissionFileManager');
+*/
 
+namespace APP\plugins\generic\texture;
+
+use PKP\file\SubmissionFileManager; 
+use PKP\file\FileManager;
 use PKP\notification\PKPNotification;
 use PKP\facades\Locale;
 use PKP\security\Role;
 use APP\facades\Repo;
 use PKP\core\JSONMessage;
+use PKP\security\authorization\WorkflowStageAccessPolicy;
 
 use APP\handler\Handler;
 use APP\notification\NotificationManager;
+
+use PKP\plugins\Hook;
+use PKP\plugins\PluginRegistry;
+
+
 
 class TextureHandler extends Handler {
 	/** @var Submission * */
@@ -62,7 +75,6 @@ class TextureHandler extends Handler {
 	 * @copydoc PKPHandler::authorize()
 	 */
 	function authorize($request, &$args, $roleAssignments) {
-		import('lib.pkp.classes.security.authorization.WorkflowStageAccessPolicy');
 		$this->addPolicy(new WorkflowStageAccessPolicy($request, $args, $roleAssignments, 'submissionId', (int)$request->getUserVar('stageId')));
 		return parent::authorize($request, $args, $roleAssignments);
 	}
@@ -76,7 +88,6 @@ class TextureHandler extends Handler {
 	public function createGalleyForm($args, $request) {
 
 		error_log('TextureHandler::createGalleyForm called');
-		
 		import('plugins.generic.texture.controllers.grid.form.TextureArticleGalleyForm');
 		$galleyForm = new TextureArticleGalleyForm($request, $this->getPlugin(), $this->publication, $this->submission);
 
@@ -100,7 +111,7 @@ class TextureHandler extends Handler {
 	 */
 	public function extract($args, $request) {
 		error_log('TextureHandler::extract called');
-		import('lib.pkp.classes.file.SubmissionFileManager');
+		
 		$user = $request->getUser();
 		$zipType = $request->getUserVar("zipType");
 		$submissionFile = $this->getAuthorizedContextObject(ASSOC_TYPE_SUBMISSION_FILE);
@@ -417,6 +428,7 @@ class TextureHandler extends Handler {
 
 		error_log('TextureHandler::createGalley called');
 
+		
 		import('plugins.generic.texture.controllers.grid.form.TextureArticleGalleyForm');
 		$galleyForm = new TextureArticleGalleyForm($request, $this->getPlugin(), $this->publication, $this->submission);
 		$galleyForm->readInputData();
@@ -555,7 +567,7 @@ class TextureHandler extends Handler {
 				$media = isset($postDataJson->media) ? (array)$postDataJson->media : [];
 
 				if (!empty($media) && array_key_exists("data", $media)) {
-					import('lib.pkp.classes.file.FileManager');
+					
 					$fileManager = new FileManager();
 					$extension = $fileManager->parseFileExtension($media["fileName"]);
 
@@ -568,7 +580,7 @@ class TextureHandler extends Handler {
 					$tempMediaFile = tempnam(sys_get_temp_dir(), 'texture');
 					file_put_contents($tempMediaFile, $mediaBlob);
 
-					import('lib.pkp.classes.file.FileManager');
+					
 					$fileManager = new FileManager();
 					$extension = $fileManager->parseFileExtension($media['fileName']);
 					$submissionDir = Services::get('submissionFile')->getSubmissionDir($context->getData('id'), $submission->getData('id'));
@@ -645,7 +657,7 @@ class TextureHandler extends Handler {
 
 		$tmpfname = tempnam(sys_get_temp_dir(), 'texture');
 		file_put_contents($tmpfname, $origDocument->saveXML());
-		import('lib.pkp.classes.file.FileManager');
+		
 		$fileManager = new FileManager();
 		$extension = $fileManager->parseFileExtension($submissionFile->getData('path'));
 		
@@ -782,4 +794,8 @@ class TextureHandler extends Handler {
 	}
 
 
+}
+
+if (!PKP_STRICT_MODE) {
+    class_alias('APP\plugins\generic\texture\TextureHandler', '\TextureHandler');
 }
