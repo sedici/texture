@@ -113,27 +113,9 @@ class TexturePlugin extends GenericPlugin {
 				define('TEXTURE_PLUGIN_NAME', $this->getName());
 				require_once($this->getPluginPath() . '/TextureHandler.php');
 				return true;
-				break;
 		}
 		return false;
 	}
-
-	public function callbackLoadHandlerAux($hookName, $args) {
-		$page = $args[0]; 
-		$op = $args[1];   
-		//error_log('$_SERVER["REQUEST_URI"]: ' . $_SERVER["REQUEST_URI"]);
-		//error_log('$_GET: ' . print_r($_GET, true));
-
-		if ($page === 'docxParser' && $op === 'parse') {
-			// Ruta absoluta al archivo del handler
-			require_once($this->getPluginPath() . '/DocxToJatsHandler.php');
-			// Esta línea es la clave para evitar el 404
-			define('HANDLER_CLASS', '\APP\plugins\generic\docxToJats\DocxToJatsHandler');
-			return true;
-		}
-		return false;
-	}
-
 
 	/**
 	 * Adds additional links to submission files grid row

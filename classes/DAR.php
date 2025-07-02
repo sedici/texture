@@ -7,12 +7,14 @@
  * @brief DAR Archive format
  */
 
+namespace APP\plugins\generic\texture\classes;
+
 use PKP\submission\SubmissionFile;
-use APP\submissionFile\Collector as SubmissionFileCollector;
+use APP\submissionFilec\Collector as SubmissionFileCollector;
 use PKP\db\DAORegistry;
-
-
 use APP\facades\Repo;
+use APP\core\Services;
+
 class DAR {
 
 
@@ -60,16 +62,16 @@ class DAR {
 	public function createManuscript($manuscript) {
 		error_log("DAR::createManuscript() called");
 
-		$domImpl = new DOMImplementation();
+		$domImpl = new \DOMImplementation();
 		$dtd = $domImpl->createDocumentType("article", "-//NLM//DTD JATS (Z39.96) Journal Archiving and Interchange DTD v1.2 20190208//EN", "JATS-archivearticle1.dtd");
 		$editableManuscriptDom = $domImpl->createDocument("", "", $dtd);
 		$editableManuscriptDom->encoding = 'UTF-8';
 
 
-		$manuscriptXmlDom = new DOMDocument;
+		$manuscriptXmlDom = new \DOMDocument;
 		$manuscriptXmlDom->loadXML($manuscript);
 
-		$xpath = new DOMXpath($manuscriptXmlDom);
+		$xpath = new \DOMXpath($manuscriptXmlDom);
 
 
 		$editableManuscriptDom->article = $editableManuscriptDom->createElement('article');
@@ -124,7 +126,7 @@ class DAR {
 	 */
 	public function createManifest($manuscriptXml, &$assets) {
 		error_log("DAR::createManifest() called");
-		$dom = new DOMDocument();
+		$dom = new \DOMDocument();
 		if (!$dom->loadXML($manuscriptXml)) {
 			fatalError("Unable to load XML document content in DOM in order to generate manifest XML.");
 		}
@@ -229,9 +231,9 @@ class DAR {
 	}
 
 	/**
-	 * @param DOMDocument $dom
+	 * @param \DOMDocument $dom
 	 */
-	protected function createEmptyMetadata(DOMDocument $dom): void {
+	protected function createEmptyMetadata(\DOMDocument $dom): void {
 		error_log("DAR::createEmptyMetadata() called");
 		$dom->front = $dom->createElement('front');
 		$dom->article->appendChild($dom->front);
