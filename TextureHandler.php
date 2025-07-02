@@ -18,12 +18,15 @@ import('lib.pkp.classes.file.SubmissionFileManager');
 
 namespace APP\plugins\generic\texture;
 
+use PKP\db\DAORegistry;
+use APP\core\Services;
 use PKP\file\SubmissionFileManager; 
 use PKP\file\FileManager;
 use PKP\notification\PKPNotification;
 use PKP\facades\Locale;
 use PKP\security\Role;
 use APP\facades\Repo;
+use APP\template\TemplateManager;
 use PKP\core\JSONMessage;
 use PKP\security\authorization\WorkflowStageAccessPolicy;
 
@@ -262,22 +265,25 @@ class TextureHandler extends Handler {
 
 		$genreId = null;
 		$journal = $request->getJournal();
+		
+		// Usar DAORegistry para géneros ya que Repo::genre() no existe en OJS 3.4
 		$genreDao = DAORegistry::getDAO('GenreDAO');
-		$genres = $genreDao->getByDependenceAndContextId(true, $journal->getId());
-
-		while ($candidateGenre = $genres->next()) {
+		$genres = $genreDao->getEnabledByContextId($journal->getId());
+		
+		while ($genre = $genres->next()) {
 			if ($extension) {
-				if ($candidateGenre->getKey() == 'IMAGE') {
-					$genreId = $candidateGenre->getId();
+				if ($genre->getKey() == 'IMAGE') {
+					$genreId = $genre->getId();
 					break;
 				}
 			} else {
-				if ($candidateGenre->getKey() == 'MULTIMEDIA') {
-					$genreId = $candidateGenre->getId();
+				if ($genre->getKey() == 'MULTIMEDIA') {
+					$genreId = $genre->getId();
 					break;
 				}
 			}
 		}
+		
 		return $genreId;
 	}
 
@@ -308,7 +314,8 @@ class TextureHandler extends Handler {
 		$submissionFile->setData('assocType', $assocType);
 		$submissionFile->setData('assocId', $assocId);
 		$submissionFile->setData('genreId', (int)$genreId);
-		Services::get('submissionFile')->add($submissionFile, $request);
+		//Services::get('submissionFile')->add($submissionFile, $request);
+		Repo::submissionFile()->add($submissionFile, $request);
 		if ($deletePath) unlink($filePath);
 		
 	}
@@ -499,10 +506,9 @@ class TextureHandler extends Handler {
 	public function json($args, $request) {
 
 		error_log('TextureHandler::json called');
-		
 
 		import('plugins.generic.texture.classes.DAR');
-		$dar = new DAR();
+	    $dar = new \DAR();
 
 		$submissionFileId = (int)$request->getUserVar('submissionFileId');
 		
@@ -530,13 +536,15 @@ class TextureHandler extends Handler {
 			if (!empty($media)) {
 
 
-				$dependentFilesIterator = Repo::submissionFile()->getMany([
-					'assocTypes' => [ASSOC_TYPE_SUBMISSION_FILE],
-					'assocIds' => [$submissionFileId],
-					'submissionIds' => [$submissionId],
-					'fileStages' => [SUBMISSION_FILE_DEPENDENT],
-					'includeDependentFiles' => true,
-				]);
+				$dependentFilesIterator = Repo::submissionFile()
+					->getCollector()
+					->filterBySubmissionIds([$submissionId])
+					->filterByFileStages([SUBMISSION_FILE_DEPENDENT])
+					->getMany()
+					->filter(function($file) use ($submissionFileId) {
+						return $file->getData('assocType') === ASSOC_TYPE_SUBMISSION_FILE 
+							&& $file->getData('assocId') === $submissionFileId;
+					});
 
 
 				foreach ($dependentFilesIterator as $dependentFile) {
@@ -583,11 +591,12 @@ class TextureHandler extends Handler {
 					
 					$fileManager = new FileManager();
 					$extension = $fileManager->parseFileExtension($media['fileName']);
-					$submissionDir = Services::get('submissionFile')->getSubmissionDir($context->getData('id'), $submission->getData('id'));
+					//$submissionDir = Services::get('submissionFile')->getSubmissionDir($context->getData('id'), $submission->getData('id'));
+					$submissionDir = Repo::submissionFile()->getSubmissionDir($context->getData('id'), $submission->getData('id'));
 					$fileId = Services::get('file')->add($tempMediaFile, $submissionDir . '/' . uniqid() . '.' . $extension);
 					unlink($tempMediaFile);
 
-					$newSubmissionFile = DAORegistry::getDao('SubmissionFileDAO')->newDataObject();
+					$newSubmissionFile = Repo::submissionFile()->newDataObject();
 					$newSubmissionFile->setData('fileId', $fileId);
 					$newSubmissionFile->setData('name', array_fill_keys(array_keys($formLocales), $media["fileName"]));
 					$newSubmissionFile->setData('submissionId', $submission->getData('id'));
@@ -597,8 +606,8 @@ class TextureHandler extends Handler {
 					$newSubmissionFile->setData('genreId', $this->_getGenreId($request, $extension));
 					$newSubmissionFile->setData('fileStage', SUBMISSION_FILE_DEPENDENT);
 
-					Services::get('submissionFile')->add($newSubmissionFile, $request);
-
+					//Services::get('submissionFile')->add($newSubmissionFile, $request);
+					Repo::submissionFile()->add($newSubmissionFile, $request);
 
 				} elseif (!empty($resources) && isset($resources[DAR_MANUSCRIPT_FILE]) && is_object($resources[DAR_MANUSCRIPT_FILE])) {
 					$this->_updateManuscriptFile($request, $resources, $submission, $submissionFile);
@@ -624,17 +633,17 @@ class TextureHandler extends Handler {
 	protected function _updateManuscriptFile($request, $resources, $submission, $submissionFile) {
 
 		error_log('TextureHandler::_updateManuscriptFile called');
-		$modifiedDocument = new DOMDocument('1.0', 'utf-8');
+		$modifiedDocument = new \DOMDocument('1.0', 'utf-8');
 		$modifiedData = $resources[DAR_MANUSCRIPT_FILE]->data;
 		$context = $request->getContext();
 
 		// write metada back from  original file
 		$modifiedDocument->loadXML($modifiedData);
-		$xpath = new DOMXpath($modifiedDocument);
-
+		$xpath = new \DOMXpath($modifiedDocument);
+		
 		$manuscriptXml = Services::get('file')->fs->read($submissionFile->getData('path'));
 
-		$origDocument = new DOMDocument('1.0', 'utf-8');
+		$origDocument = new \DOMDocument('1.0', 'utf-8');
 		$origDocument->loadXML($manuscriptXml);
 
 		$body = $origDocument->documentElement->getElementsByTagName('body')->item(0);
@@ -670,6 +679,8 @@ class TextureHandler extends Handler {
 		Repo::submissionFile()->edit($submissionFile, ['fileId' => $fileId, 'uploaderUserId' => $request->getUser()->getId(),], $request);
 
 		unlink($tmpfname);
+
+		error_log('TextureHandler::_updateManuscriptFile FIN DEL PROCESO');
 
 		return $fileId;
 	}
@@ -792,7 +803,6 @@ class TextureHandler extends Handler {
 		header('Content-Length: ' . strlen($mediaFileContent));
 		return $mediaFileContent;
 	}
-
 
 }
 
