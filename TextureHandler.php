@@ -12,10 +12,6 @@
  *
  * @brief Handle requests for Texture plugin
  */
-/*import('lib.pkp.classes.file.FileManager');
-import('lib.pkp.classes.file.SubmissionFileManager');
-*/
-
 namespace APP\plugins\generic\texture;
 
 use PKP\db\DAORegistry;
@@ -29,13 +25,11 @@ use APP\facades\Repo;
 use APP\template\TemplateManager;
 use PKP\core\JSONMessage;
 use PKP\security\authorization\WorkflowStageAccessPolicy;
-
 use APP\handler\Handler;
 use APP\notification\NotificationManager;
-
 use PKP\plugins\Hook;
 use PKP\plugins\PluginRegistry;
-
+use APP\plugins\generic\texture\classes\DAR;
 
 
 class TextureHandler extends Handler {
@@ -370,7 +364,7 @@ class TextureHandler extends Handler {
 
 		error_log('TextureHandler::export called');
 
-		import('plugins.generic.texture.classes.DAR');
+
 		$dar = new DAR();
 		$assets = array();
 
@@ -433,9 +427,7 @@ class TextureHandler extends Handler {
 	 */
 	public function createGalley($args, $request) {
 
-		error_log('TextureHandler::createGalley called');
-
-		
+		error_log('TextureHandler::createGalley called');		
 		import('plugins.generic.texture.controllers.grid.form.TextureArticleGalleyForm');
 		$galleyForm = new TextureArticleGalleyForm($request, $this->getPlugin(), $this->publication, $this->submission);
 		$galleyForm->readInputData();
@@ -507,9 +499,7 @@ class TextureHandler extends Handler {
 
 		error_log('TextureHandler::json called');
 
-		import('plugins.generic.texture.classes.DAR');
-	    $dar = new \DAR();
-
+	    $dar = new DAR();
 		$submissionFileId = (int)$request->getUserVar('submissionFileId');
 		
 		// Remplace with the actual way to get the submission file
@@ -693,82 +683,11 @@ class TextureHandler extends Handler {
 	 *
 	 * @return void
 	 */
-	public function mediAux($args, $request) {
-		error_log('TextureHandler::media called');
-		$submissionFileId = (int)$request->getUserVar('assocId');
-
-		//$submissionFile = Services::get('submissionFile')->get($submissionFileId);
-		$submissionFile = Repo::submissionFile()->get($submissionFileId);
-	
-
-		if (!$submissionFile) {
-			fatalError('Invalid request');
-		}
-
-
-		// make sure submission file is an xml document
-		if (!in_array($submissionFile->getData('mimetype'), array('text/xml', 'application/xml'))) {
-			fatalError('Invalid request');
-		}
-		
-		/*
-		$dependentFiles = Services::get('submissionFile')->getMany([
-			'assocTypes' => [ASSOC_TYPE_SUBMISSION_FILE],
-			'assocIds' => [$submissionFile->getData('id')],
-			'submissionIds' => [$submissionFile->getData('submissionId')],
-			'fileStages' => [SUBMISSION_FILE_DEPENDENT],
-			'includeDependentFiles' => true,
-		]);*/
-
-		$dependentFiles = Repo::submissionFile()
-			->getCollector()
-			->filterBySubmissionIds([$submissionFile->getData('submissionId')])
-			->filterByFileStages([SUBMISSION_FILE_DEPENDENT])
-			->getMany()
-			->filter(function($file) use ($submissionFile) {
-				return $file->getData('assocType') === ASSOC_TYPE_SUBMISSION_FILE &&
-					$file->getData('assocId') === $submissionFile->getData('id');
-			});
-			
-		error_log("🧾 submissionFile actual (el XML): ID=" . $submissionFile->getData('id'));
-		error_log("🔍 fileId recibido: " . $request->getUserVar('fileId'));
-
-		foreach ($dependentFiles as $f) {
-			error_log("📄 Revisando archivo: " . $f->getData('fileId'));
-	    	error_log("➕ File {$f->getData('fileId')} assocId={$f->getData('assocId')} assocType={$f->getData('assocType')}");
-		}
-
-
-		$mediaFile = null;
-		foreach ($dependentFiles as $dependentFile) {
-			if ($dependentFile->getData('fileId') == $request->getUserVar('fileId')) {
-				$mediaFile = $dependentFile;
-				break;
-			}
-		}
-
-		if (!$mediaFile) {
-			error_log('TextureHandler::media mediaFile not found');
-			$request->getDispatcher()->handle404();
-		}
-
-
-		header('Content-Type:' . $mediaFile->getData('mimetype'));
-		$mediaFileContent = Services::get('file')->fs->read($mediaFile->getData('path'));
-		header('Content-Length: ' . strlen($mediaFileContent));
-		return $mediaFileContent;
-
-	}
-
 	public function media($args, $request) {
 		error_log('TextureHandler::media called');
 
 		$fileId = (int) $request->getUserVar('fileId'); // ← este es el ID que querés servir
 		$assocId = (int) $request->getUserVar('assocId'); // ← este es el XML base (submissionFile)
-
-		error_log("🔍 fileId recibido: $fileId");
-		error_log("📎 assocId recibido (XML): $assocId");
-
 		$submissionFile = Repo::submissionFile()->get($assocId);
 
 		if (!$submissionFile) {
@@ -784,17 +703,11 @@ class TextureHandler extends Handler {
         		return $file->getData('fileId') === $fileId;
 			});
 
-		foreach ($dependentFiles as $f) {
-			error_log("📄 Revisando archivo: " . $f->getData('fileId'));
-			error_log("➕ File {$f->getData('fileId')} assocId={$f->getData('assocId')} assocType={$f->getData('assocType')}");
-		}
-
 		$mediaFile = $dependentFiles->first(function ($file) use ($fileId) {
 			return $file->getData('fileId') === $fileId;
 		});
 
 		if (!$mediaFile) {
-			error_log('❌ TextureHandler::media mediaFile not found');
 			$request->getDispatcher()->handle404();
 		}
 
