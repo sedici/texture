@@ -13,12 +13,17 @@
  * @brief Substance JATS editor plugin
  *
  */
-//namespace APP\plugins\generic\texture;
+namespace APP\plugins\generic\texture;
 
 use PKP\linkAction\LinkAction;
 use PKP\plugins\GenericPlugin;
 use PKP\linkAction\request\OpenWindowAction;
 use PKP\linkAction\request\PostAndRedirectAction;
+
+use PKP\plugins\Hook;
+use APP\facades\Repo;
+use PKP\core\Dispatcher;
+use PKP\core\PKPRequest;
 
 define('DAR_MANIFEST_FILE', 'manifest.xml');
 define('DAR_MANUSCRIPT_FILE', 'manuscript.xml');
@@ -54,8 +59,8 @@ class TexturePlugin extends GenericPlugin {
 		if (parent::register($category, $path, $mainContextId)) {
 			if ($this->getEnabled()) {
 				// Register callbacks.
-				HookRegistry::register('LoadHandler', array($this, 'callbackLoadHandler'));
-				HookRegistry::register('TemplateManager::fetch', array($this, 'templateFetchCallback'));
+				Hook::add('LoadHandler', array($this, 'callbackLoadHandler'));
+				Hook::add('TemplateManager::fetch', array($this, 'templateFetchCallback'));
 
 				$this->_registerTemplateResource();
 			}
@@ -106,10 +111,26 @@ class TexturePlugin extends GenericPlugin {
 			case 'texture/media':
 				define('HANDLER_CLASS', 'TextureHandler');
 				define('TEXTURE_PLUGIN_NAME', $this->getName());
-				$args[2] = $this->getPluginPath() . '/' . 'TextureHandler.inc.php';
+				require_once($this->getPluginPath() . '/TextureHandler.php');
+				return true;
 				break;
 		}
+		return false;
+	}
 
+	public function callbackLoadHandlerAux($hookName, $args) {
+		$page = $args[0]; 
+		$op = $args[1];   
+		//error_log('$_SERVER["REQUEST_URI"]: ' . $_SERVER["REQUEST_URI"]);
+		//error_log('$_GET: ' . print_r($_GET, true));
+
+		if ($page === 'docxParser' && $op === 'parse') {
+			// Ruta absoluta al archivo del handler
+			require_once($this->getPluginPath() . '/DocxToJatsHandler.php');
+			// Esta línea es la clave para evitar el 404
+			define('HANDLER_CLASS', '\APP\plugins\generic\docxToJats\DocxToJatsHandler');
+			return true;
+		}
 		return false;
 	}
 
@@ -271,3 +292,9 @@ class TexturePlugin extends GenericPlugin {
 
 	}
 }
+
+if (!PKP_STRICT_MODE) {
+    class_alias('APP\plugins\generic\texture\TexturePlugin', '\TexturePlugin');
+}
+
+
