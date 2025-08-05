@@ -118,6 +118,7 @@ class TextureHandler extends Handler {
 
 		$zip = new ZipArchive;
 		if ($zip->open($submissionFile->getData('path')) === TRUE) {
+			error_log("Entrando en EXTRACT existe ZIP");
 			$submissionDao = Application::getSubmissionDAO();
 			$submissionId = (int)$request->getUserVar('submissionId');
 			$submission = $submissionDao->getById($submissionId);
@@ -680,37 +681,71 @@ class TextureHandler extends Handler {
 	 *
 	 * @param $args array
 	 * @param $request PKPRequest
-	 *
 	 * @return void
 	 */
 	public function media($args, $request) {
-		error_log('TextureHandler::media called');
-
-		$fileId = (int) $request->getUserVar('fileId'); // ← este es el ID que querés servir
-		$assocId = (int) $request->getUserVar('assocId'); // ← este es el XML base (submissionFile)
-		$submissionFile = Repo::submissionFile()->get($assocId);
-
-		if (!$submissionFile) {
-			fatalError('Invalid submission file');
+		$submissionFileId = (int)$request->getUserVar('assocId');
+		$requestedFileId = (int)$request->getUserVar('fileId');
+		
+		$submissionFile = Repo::submissionFile()->get($submissionFileId);
+		
+		if (!$submissionFile || !in_array($submissionFile->getData('mimetype'), array('text/xml', 'application/xml'))) {
+			fatalError('Invalid request');
 		}
 
+		// Get files directly associated with this XML file
 		$dependentFiles = Repo::submissionFile()
 			->getCollector()
+			->filterByAssoc(ASSOC_TYPE_SUBMISSION_FILE, [$submissionFile->getData('id')])
 			->filterBySubmissionIds([$submissionFile->getData('submissionId')])
 			->filterByFileStages([SUBMISSION_FILE_DEPENDENT])
-			->getMany()
-			->filter(function($file) use ($fileId) {
-        		return $file->getData('fileId') === $fileId;
-			});
-
-		$mediaFile = $dependentFiles->first(function ($file) use ($fileId) {
-			return $file->getData('fileId') === $fileId;
-		});
-
-		if (!$mediaFile) {
-			$request->getDispatcher()->handle404();
+			->getMany();
+		
+		// First look for exact fileId match
+		$mediaFile = null;
+		foreach ($dependentFiles as $dependentFile) {
+			if ($dependentFile->getData('fileId') == $requestedFileId) {
+				$mediaFile = $dependentFile;
+				break;
+			}
 		}
 
+		// If not found, try to find by filename match
+		if (!$mediaFile) {
+			// Find the requested filename in all submission files
+			$requestedFilename = null;
+			$allFiles = Repo::submissionFile()
+				->getCollector()
+				->filterBySubmissionIds([$submissionFile->getData('submissionId')])
+				->getMany();
+				
+			foreach ($allFiles as $file) {
+				if ($file->getData('fileId') == $requestedFileId) {
+					$requestedFilename = $file->getLocalizedData('name');
+					break;
+				}
+			}
+			
+			// If filename found, look for match in current XML's dependent files
+			if ($requestedFilename) {
+				foreach ($dependentFiles as $dependentFile) {
+					if ($dependentFile->getLocalizedData('name') === $requestedFilename) {
+						$mediaFile = $dependentFile;
+						break;
+					}
+				}
+			}
+		}
+
+		// Return placeholder if no media file found
+		if (!$mediaFile) {
+			header('Content-Type: image/png');
+			$placeholderImage = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=');
+			header('Content-Length: ' . strlen($placeholderImage));
+			return $placeholderImage;
+		}
+
+		// Serve the media file
 		header('Content-Type:' . $mediaFile->getData('mimetype'));
 		$mediaFileContent = Services::get('file')->fs->read($mediaFile->getData('path'));
 		header('Content-Length: ' . strlen($mediaFileContent));

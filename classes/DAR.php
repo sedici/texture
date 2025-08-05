@@ -203,8 +203,6 @@ class DAR {
 			'includeDependentFiles' => true,
 		]);*/
 
-		error_log(print_r(DAORegistry::getDAOs(), true));
-
 		$submissionFiles = Repo::submissionFile()
 			->getCollector()
 			->filterBySubmissionIds([$submissionId])
