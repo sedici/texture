@@ -687,13 +687,15 @@ class TextureHandler extends Handler {
 		$submissionFileId = (int)$request->getUserVar('assocId');
 		$requestedFileId = (int)$request->getUserVar('fileId');
 		
+		error_log("TextureHandler::media - assocId: $submissionFileId, fileId: $requestedFileId");
+
 		$submissionFile = Repo::submissionFile()->get($submissionFileId);
 		
 		if (!$submissionFile || !in_array($submissionFile->getData('mimetype'), array('text/xml', 'application/xml'))) {
 			fatalError('Invalid request');
 		}
 
-		// Get files directly associated with this XML file
+		// Buscar archivos dependientes asociados con este archivo XML en la etapa actual
 		$dependentFiles = Repo::submissionFile()
 			->getCollector()
 			->filterByAssoc(ASSOC_TYPE_SUBMISSION_FILE, [$submissionFile->getData('id')])
@@ -701,19 +703,20 @@ class TextureHandler extends Handler {
 			->filterByFileStages([SUBMISSION_FILE_DEPENDENT])
 			->getMany();
 		
-		// First look for exact fileId match
+		// 1. PRIMERO: Buscar coincidencia directa por ID en la etapa actual
 		$mediaFile = null;
 		foreach ($dependentFiles as $dependentFile) {
 			if ($dependentFile->getData('fileId') == $requestedFileId) {
 				$mediaFile = $dependentFile;
+				error_log("Found file by ID match in current stage");
 				break;
 			}
 		}
 
-		// If not found, try to find by filename match
+		// 2. SEGUNDO: Si no se encuentra por ID, buscar por nombre
 		if (!$mediaFile) {
-			// Find the requested filename in all submission files
-			$requestedFilename = null;
+			// Obtener el nombre del archivo solicitado buscando en toda la presentación
+			$requestedFileName = null;
 			$allFiles = Repo::submissionFile()
 				->getCollector()
 				->filterBySubmissionIds([$submissionFile->getData('submissionId')])
@@ -721,31 +724,32 @@ class TextureHandler extends Handler {
 				
 			foreach ($allFiles as $file) {
 				if ($file->getData('fileId') == $requestedFileId) {
-					$requestedFilename = $file->getLocalizedData('name');
+					$requestedFileName = $file->getLocalizedData('name');
+					error_log("Found name for requested fileId: " . $requestedFileName);
 					break;
 				}
 			}
 			
-			// If filename found, look for match in current XML's dependent files
-			if ($requestedFilename) {
+			// Si se encontró el nombre, buscar un archivo con ese nombre en la etapa actual
+			if ($requestedFileName) {
 				foreach ($dependentFiles as $dependentFile) {
-					if ($dependentFile->getLocalizedData('name') === $requestedFilename) {
+					$currentName = $dependentFile->getLocalizedData('name');
+					if ($currentName === $requestedFileName) {
 						$mediaFile = $dependentFile;
+						error_log("Found matching file by name: " . $currentName);
 						break;
 					}
 				}
 			}
 		}
 
-		// Return placeholder if no media file found
+		// Si no se encuentra, devolver un placeholder transparente
 		if (!$mediaFile) {
-			header('Content-Type: image/png');
-			$placeholderImage = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=');
-			header('Content-Length: ' . strlen($placeholderImage));
-			return $placeholderImage;
+			$request->getDispatcher()->handle404();
 		}
 
-		// Serve the media file
+		// Servir el archivo de medios
+		error_log("Serving media file: " . $mediaFile->getLocalizedData('name'));
 		header('Content-Type:' . $mediaFile->getData('mimetype'));
 		$mediaFileContent = Services::get('file')->fs->read($mediaFile->getData('path'));
 		header('Content-Length: ' . strlen($mediaFileContent));
