@@ -187,12 +187,12 @@ class DAR {
 		$submissionFileId = $request->getUserVar('submissionFileId');
 		$stageId = $request->getUserVar('stageId');
 		$submissionId = $request->getUserVar('submissionId');
-
 		$submissionFiles = Repo::submissionFile()
 			->getCollector()
 			->filterBySubmissionIds([$submissionId])
 			->filterByFileStages([SUBMISSION_FILE_DEPENDENT])
 			->getMany(); 
+
 
 
 		foreach ($submissionFiles as $asset) {
@@ -240,7 +240,6 @@ class DAR {
 	 * @return array
 	 */
 	public function getDependentFilePaths($submissionId, $fileId): array {
-
 		$dependentFiles = Services::get('submissionFile')->getMany([
 			'assocTypes' => [ASSOC_TYPE_SUBMISSION_FILE],
 			'assocIds' => [$fileId],

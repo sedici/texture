@@ -82,7 +82,6 @@ class TextureHandler extends Handler {
 	 * @return JSONMessage JSON object
 	 */
 	public function createGalleyForm($args, $request) {
-
 		import('plugins.generic.texture.controllers.grid.form.TextureArticleGalleyForm');
 		$galleyForm = new TextureArticleGalleyForm($request, $this->getPlugin(), $this->publication, $this->submission);
 
@@ -105,7 +104,6 @@ class TextureHandler extends Handler {
 	 * @param $request
 	 */
 	public function extract($args, $request) {
-		
 		$user = $request->getUser();
 		$zipType = $request->getUserVar("zipType");
 		$submissionFile = $this->getAuthorizedContextObject(ASSOC_TYPE_SUBMISSION_FILE);
@@ -252,10 +250,8 @@ class TextureHandler extends Handler {
 	 */
 	private function _getGenreId($request, $extension) {
 
-
 		$genreId = null;
 		$journal = $request->getJournal();
-
 		$genreDao = DAORegistry::getDAO('GenreDAO');
 		$genres = $genreDao->getEnabledByContextId($journal->getId());
 		
@@ -291,7 +287,7 @@ class TextureHandler extends Handler {
 	 * @return void
 	 */
 	protected function _createDependentFile($genreId, $submission, $fileName, $fileStage = false, $assocType = false, $deletePath = false, $assocId = false, $filePath = false, $request) {
-
+  
 		$submissionFile = DAORegistry::getDao('SubmissionFileDAO')->newDataObject();
 
 		$submissionFile->setData('submissionFileId', $submissionFile->getData("submissionFileId"));
@@ -478,7 +474,7 @@ class TextureHandler extends Handler {
 	 * @return JSONMessage
 	 */
 	public function json($args, $request) {
-	    $dar = new DAR();
+	  $dar = new DAR();
 		$submissionFileId = (int)$request->getUserVar('submissionFileId');
 		
 		// Remplace with the actual way to get the submission file
@@ -639,7 +635,6 @@ class TextureHandler extends Handler {
 		Repo::submissionFile()->edit($submissionFile, ['fileId' => $fileId, 'uploaderUserId' => $request->getUser()->getId(),], $request);
 
 		unlink($tmpfname);
-
 		return $fileId;
 	}
 
