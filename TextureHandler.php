@@ -5,7 +5,7 @@
  *
  * Copyright (c) 2014-2019 Simon Fraser University
  * Copyright (c) 2003-2019 John Willinsky
- * Distributed under the GNU GPL v2. For full terms see the file docs/COPYING.
+ * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class TextureHandler
  * @ingroup plugins_generic_texture
@@ -61,7 +61,6 @@ class TextureHandler extends Handler {
 	 * @copydoc PKPHandler::initialize()
 	 */
 	function initialize($request) {
-		error_log('TextureHandler::initialize called');
 		parent::initialize($request);
 		$this->submission = $this->getAuthorizedContextObject(ASSOC_TYPE_SUBMISSION);
 		$this->publication = $this->submission->getLatestPublication();
@@ -83,8 +82,6 @@ class TextureHandler extends Handler {
 	 * @return JSONMessage JSON object
 	 */
 	public function createGalleyForm($args, $request) {
-
-		error_log('TextureHandler::createGalleyForm called');
 		import('plugins.generic.texture.controllers.grid.form.TextureArticleGalleyForm');
 		$galleyForm = new TextureArticleGalleyForm($request, $this->getPlugin(), $this->publication, $this->submission);
 
@@ -107,8 +104,6 @@ class TextureHandler extends Handler {
 	 * @param $request
 	 */
 	public function extract($args, $request) {
-		error_log('TextureHandler::extract called');
-		
 		$user = $request->getUser();
 		$zipType = $request->getUserVar("zipType");
 		$submissionFile = $this->getAuthorizedContextObject(ASSOC_TYPE_SUBMISSION_FILE);
@@ -255,12 +250,8 @@ class TextureHandler extends Handler {
 	 */
 	private function _getGenreId($request, $extension) {
 
-		error_log('TextureHandler::_getGenreId called');
-
 		$genreId = null;
 		$journal = $request->getJournal();
-		
-		// Usar DAORegistry para géneros ya que Repo::genre() no existe en OJS 3.4
 		$genreDao = DAORegistry::getDAO('GenreDAO');
 		$genres = $genreDao->getEnabledByContextId($journal->getId());
 		
@@ -296,8 +287,7 @@ class TextureHandler extends Handler {
 	 * @return void
 	 */
 	protected function _createDependentFile($genreId, $submission, $fileName, $fileStage = false, $assocType = false, $deletePath = false, $assocId = false, $filePath = false, $request) {
-
-		error_log('TextureHandler::createDependentFile called');
+  
 		$submissionFile = DAORegistry::getDao('SubmissionFileDAO')->newDataObject();
 
 		$submissionFile->setData('submissionFileId', $submissionFile->getData("submissionFileId"));
@@ -325,7 +315,7 @@ class TextureHandler extends Handler {
 	 * @return JSONMessage
 	 */
 	private function removeFilesAndNotify(ZipArchive $zip, string $archivePath, $user, $message, $errorType = PKPNotification::NOTIFICATION_TYPE_ERROR, $status = False): JSONMessage {
-		error_log('TextureHandler::removeFilesAndNotify called');
+
 		$notificationMgr = new NotificationManager();
 		$zip->close();
 		$this->rrmdir($archivePath);
@@ -338,7 +328,6 @@ class TextureHandler extends Handler {
 	 * @note Adapted from https://www.php.net/manual/de/function.rmdir.php#117354
 	 */
 	private function rrmdir($src) {
-		error_log('TextureHandler::rrmdir called');
 		$dir = opendir($src);
 		while (false !== ($file = readdir($dir))) {
 			if (($file != '.') && ($file != '..')) {
@@ -361,10 +350,6 @@ class TextureHandler extends Handler {
 	 * @return
 	 */
 	public function export($args, $request) {
-
-		error_log('TextureHandler::export called');
-
-
 		$dar = new DAR();
 		$assets = array();
 
@@ -407,7 +392,6 @@ class TextureHandler extends Handler {
 	 * @return SubmissionFileManager
 	 */
 	function _getFileManager($contextId, $submissionId) {
-		error_log('TextureHandler::_getFileManager called');
 		return new SubmissionFileManager($contextId, $submissionId);
 	}
 
@@ -416,7 +400,6 @@ class TextureHandler extends Handler {
 	 * @return boolean
 	 */
 	static function zipFunctional() {
-		error_log('TextureHandler::zipFunctional called');
 		return (extension_loaded('zip'));
 	}
 
@@ -426,8 +409,6 @@ class TextureHandler extends Handler {
 	 * @return JSONMessage
 	 */
 	public function createGalley($args, $request) {
-
-		error_log('TextureHandler::createGalley called');		
 		import('plugins.generic.texture.controllers.grid.form.TextureArticleGalleyForm');
 		$galleyForm = new TextureArticleGalleyForm($request, $this->getPlugin(), $this->publication, $this->submission);
 		$galleyForm->readInputData();
@@ -453,9 +434,6 @@ class TextureHandler extends Handler {
 	 * @return string
 	 */
 	public function editor($args, $request) {
-
-		error_log('TextureHandler::editor called');
-
 		$stageId = (int)$request->getUserVar('stageId');
 		$submissionFileId = (int)$request->getUserVar('submissionFileId');
 		$submissionId = (int)$request->getUserVar('submissionId');
@@ -496,10 +474,7 @@ class TextureHandler extends Handler {
 	 * @return JSONMessage
 	 */
 	public function json($args, $request) {
-
-		error_log('TextureHandler::json called');
-
-	    $dar = new DAR();
+	  $dar = new DAR();
 		$submissionFileId = (int)$request->getUserVar('submissionFileId');
 		
 		// Remplace with the actual way to get the submission file
@@ -518,7 +493,6 @@ class TextureHandler extends Handler {
 		}
 
 		$formLocales = Locale::getSupportedFormLocales();
-		error_log('($_SERVER["REQUEST_METHOD"]' . $_SERVER["REQUEST_METHOD"]);
 		if ($_SERVER["REQUEST_METHOD"] === "DELETE") {
 			
 			$postData = file_get_contents('php://input');
@@ -581,7 +555,6 @@ class TextureHandler extends Handler {
 					
 					$fileManager = new FileManager();
 					$extension = $fileManager->parseFileExtension($media['fileName']);
-					//$submissionDir = Services::get('submissionFile')->getSubmissionDir($context->getData('id'), $submission->getData('id'));
 					$submissionDir = Repo::submissionFile()->getSubmissionDir($context->getData('id'), $submission->getData('id'));
 					$fileId = Services::get('file')->add($tempMediaFile, $submissionDir . '/' . uniqid() . '.' . $extension);
 					unlink($tempMediaFile);
@@ -621,8 +594,6 @@ class TextureHandler extends Handler {
 	 * @return SubmissionFile
 	 */
 	protected function _updateManuscriptFile($request, $resources, $submission, $submissionFile) {
-
-		error_log('TextureHandler::_updateManuscriptFile called');
 		$modifiedDocument = new \DOMDocument('1.0', 'utf-8');
 		$modifiedData = $resources[DAR_MANUSCRIPT_FILE]->data;
 		$context = $request->getContext();
@@ -659,19 +630,11 @@ class TextureHandler extends Handler {
 		
 		$fileManager = new FileManager();
 		$extension = $fileManager->parseFileExtension($submissionFile->getData('path'));
-		
-		//$submissionDir = Services::get('submissionFile')->getSubmissionDir($context->getData('id'), $submission->getData('id'));
 		$submissionDir = Repo::submissionFile()->getSubmissionDir($context->getData('id'), $submission->getData('id'));
-
 		$fileId = Services::get('file')->add($tmpfname, $submissionDir . '/' . uniqid() . '.' . $extension);
-
-		//Services::get('submissionFile')->edit($submissionFile, ['fileId' => $fileId, 'uploaderUserId' => $request->getUser()->getId(),], $request);
 		Repo::submissionFile()->edit($submissionFile, ['fileId' => $fileId, 'uploaderUserId' => $request->getUser()->getId(),], $request);
 
 		unlink($tmpfname);
-
-		error_log('TextureHandler::_updateManuscriptFile FIN DEL PROCESO');
-
 		return $fileId;
 	}
 
@@ -684,8 +647,6 @@ class TextureHandler extends Handler {
 	 * @return void
 	 */
 	public function media($args, $request) {
-		error_log('TextureHandler::media called');
-
 		$fileId = (int) $request->getUserVar('fileId'); // ← este es el ID que querés servir
 		$assocId = (int) $request->getUserVar('assocId'); // ← este es el XML base (submissionFile)
 		$submissionFile = Repo::submissionFile()->get($assocId);
