@@ -134,7 +134,6 @@ class DAR {
 			$figItem = $figElements->item($k);
 			$graphic = $figItem->getElementsByTagName('graphic');
 			if (sizeof($graphic) > 0) {
-
 				// figure without graphic?
 				if (!$figItem || !$graphic) {
 					continue;
@@ -184,32 +183,53 @@ class DAR {
 		$router = $request->getRouter();
 		$dispatcher = $router->getDispatcher();
 
-		$submissionFileId = $request->getUserVar('submissionFileId');
+		$submissionFileId = (int) $request->getUserVar('submissionFileId');
 		$stageId = $request->getUserVar('stageId');
-		$submissionId = $request->getUserVar('submissionId');
-		$submissionFiles = Repo::submissionFile()
+		$submissionId = (int) $request->getUserVar('submissionId');
+
+		$dependentFiles = Repo::submissionFile()
 			->getCollector()
 			->filterBySubmissionIds([$submissionId])
 			->filterByFileStages([SUBMISSION_FILE_DEPENDENT])
-			->getMany(); 
+			->getMany();
+		
+		$byBasename = [];
+		foreach ($dependentFiles as $file) {
+			if ($file->getData('assocType') !== ASSOC_TYPE_SUBMISSION_FILE) continue;
+			if ((int) $file->getData('assocId') !== $submissionFileId) continue;
+			$fileName = $file->getLocalizedData('name');
 
+			error_log("FILENAME:" . $fileName);
 
+			error_log("FILE DATA: " . print_r($file, true));
 
-		foreach ($submissionFiles as $asset) {
+			if (!$fileName) continue;
+			$base = strtolower(basename($fileName));
+			$byBasename[$base] = $file;
+		}
+
+		foreach ((array) $assets as $assetMeta) {
+			error_log("ASSET META: " . print_r($assetMeta, true));
+
+			if (!isset($assetMeta['path'])) continue;
+			$path = $assetMeta['path'];
+			$base = strtolower(basename($path));
+			if (!isset($byBasename[$base])) continue;
+			$file = $byBasename[$base];
+
 			$url = $dispatcher->url($request, ROUTE_PAGE, null, 'texture', 'media', null, array(
 				'submissionId' => $submissionId,
 				'stageId' => $stageId,
 				'assocId' => $submissionFileId,
-				'fileId' => $asset->getData('fileId')
-
+				'fileId' => $file->getData('fileId')
 			));
 
-			$infos[$asset->getLocalizedData('name')] = array(
+			$infos[$path] = array(
 				'encoding' => 'url',
 				'data' => $url
 			);
-
 		}
+
 		return $infos;
 	}
 

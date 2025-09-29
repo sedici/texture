@@ -647,8 +647,8 @@ class TextureHandler extends Handler {
 	 * @return void
 	 */
 	public function media($args, $request) {
-		$fileId = (int) $request->getUserVar('fileId'); // ← este es el ID que querés servir
-		$assocId = (int) $request->getUserVar('assocId'); // ← este es el XML base (submissionFile)
+		$fileId = (int) $request->getUserVar('fileId');
+		$assocId = (int) $request->getUserVar('assocId'); 
 		$submissionFile = Repo::submissionFile()->get($assocId);
 
 		if (!$submissionFile) {
@@ -660,8 +660,9 @@ class TextureHandler extends Handler {
 			->filterBySubmissionIds([$submissionFile->getData('submissionId')])
 			->filterByFileStages([SUBMISSION_FILE_DEPENDENT])
 			->getMany()
-			->filter(function($file) use ($fileId) {
-        		return $file->getData('fileId') === $fileId;
+			->filter(function ($file) use ($assocId) {
+				return $file->getData('assocType') === ASSOC_TYPE_SUBMISSION_FILE
+					&& $file->getData('assocId') === $assocId;
 			});
 
 		$mediaFile = $dependentFiles->first(function ($file) use ($fileId) {
