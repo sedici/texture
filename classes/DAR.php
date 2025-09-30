@@ -199,17 +199,12 @@ class DAR {
 			if ((int) $file->getData('assocId') !== $submissionFileId) continue;
 			$fileName = $file->getLocalizedData('name');
 
-			error_log("FILENAME:" . $fileName);
-
-			error_log("FILE DATA: " . print_r($file, true));
-
 			if (!$fileName) continue;
 			$base = strtolower(basename($fileName));
 			$byBasename[$base] = $file;
 		}
 
 		foreach ((array) $assets as $assetMeta) {
-			error_log("ASSET META: " . print_r($assetMeta, true));
 
 			if (!isset($assetMeta['path'])) continue;
 			$path = $assetMeta['path'];
