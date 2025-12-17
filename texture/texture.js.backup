@@ -19091,7 +19091,6 @@
     el.append(_exportPersonGroup($$, doc, node.editors, 'editor'));
     el.append(_exportPersonGroup($$, doc, node.inventors, 'inventor'));
     el.append(_exportPersonGroup($$, doc, node.sponsors, 'sponsor'));
-    el.append(_exportPersonGroup($$, doc, node.translators, 'translator'));
 
     if (type === BOOK_REF || type === REPORT_REF || type === SOFTWARE_REF) {
       el.append(_exportAnnotatedText$1(exporter, [node.id, 'title'], 'source'));
