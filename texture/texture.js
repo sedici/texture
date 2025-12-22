@@ -1,8 +1,9 @@
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('substance'), require('katex')) :
-  typeof define === 'function' && define.amd ? define(['exports', 'substance', 'katex'], factory) :
-  (global = global || self, factory(global.texture = {}, global.substance, global.katex));
-}(this, function (exports, substance, katex) { 'use strict';
+    typeof define === 'function' && define.amd ? define(['exports', 'substance', 'katex'], factory) :
+      (global = global || self, factory(global.texture = {}, global.substance, global.katex));
+}(this, function (exports, substance, katex) {
+  'use strict';
 
   var substance__default = 'default' in substance ? substance['default'] : substance;
   katex = katex && katex.hasOwnProperty('default') ? katex['default'] : katex;
@@ -10,7 +11,7 @@
   // Legacy
 
   // This is only used for Value models
-  function addModelObserver (model, fn, comp, options = {}) {
+  function addModelObserver(model, fn, comp, options = {}) {
     let stage = options.stage || 'render';
     if (model._isValue) {
       let path = model.getPath();
@@ -23,30 +24,30 @@
 
   /* istanbul ignore file */
 
-  function throwMethodIsAbstract () {
+  function throwMethodIsAbstract() {
     throw new Error('This method is abstract.')
   }
 
   class ValueModel {
-    constructor (api, path) {
+    constructor(api, path) {
       this._api = api;
       this._path = path;
     }
 
-    get id () {
+    get id() {
       return substance.getKeyForPath(this._path)
     }
 
-    get type () {
+    get type() {
       throwMethodIsAbstract();
     }
 
-    getPath () {
+    getPath() {
       return this._path
     }
 
     // EXPERIMENTAL: a third kind of path, which is [<type>, <prop-name>]
-    _getPropertySelector () {
+    _getPropertySelector() {
       if (!this._selector) {
         let doc = this._api.getDocument();
         let node = doc.get(this._path[0]);
@@ -55,15 +56,15 @@
       return this._selector
     }
 
-    hasTargetType (name) {
+    hasTargetType(name) {
       return false
     }
 
-    getValue () {
+    getValue() {
       return this._api.getDocument().get(this._path)
     }
 
-    setValue (val) {
+    setValue(val) {
       // TODO this should go into API
       let api = this._api;
       api.getEditorSession().transaction(tx => {
@@ -72,57 +73,57 @@
       });
     }
 
-    getSchema () {
+    getSchema() {
       return this._api.getDocument().getProperty(this._path)
     }
 
-    isEmpty () {
+    isEmpty() {
       return substance.isNil(this.getValue())
     }
 
-    _resolveId (id) {
+    _resolveId(id) {
       return this._api.getDocument().get(id)
     }
 
-    get _value () { return this.getValue() }
+    get _value() { return this.getValue() }
 
-    get _isValue () { return true }
+    get _isValue() { return true }
   }
 
   class BooleanModel extends ValueModel {
-    get type () { return 'boolean' }
+    get type() { return 'boolean' }
 
     // Note: Nil is interpreted as false, and false is thus also interpreted as isEmpty()
-    isEmpty () {
+    isEmpty() {
       return !this.getValue()
     }
   }
 
   class ChildModel extends ValueModel {
-    constructor (api, path, targetTypes) {
+    constructor(api, path, targetTypes) {
       super(api, path);
 
       this._targetTypes = targetTypes;
     }
 
-    get type () { return 'child' }
+    get type() { return 'child' }
 
-    getChild () {
+    getChild() {
       return this._resolveId(this.getValue())
     }
 
-    hasTargetType (type) {
+    hasTargetType(type) {
       return this._targetTypes.has(type)
     }
 
-    isEmpty () {
+    isEmpty() {
       // FIXME: formerly we have delegated to a child model (but, when is a node / composite model empty?)
       let child = this.getChild();
       return !child
     }
   }
 
-  function isCollectionEmpty (api, path) {
+  function isCollectionEmpty(api, path) {
     let doc = api.getDocument();
     let ids = doc.get(path);
     if (ids.length === 0) return true
@@ -136,24 +137,24 @@
   }
 
   class CollectionModel extends ValueModel {
-    constructor (api, path, targetTypes) {
+    constructor(api, path, targetTypes) {
       super(api, path);
 
       this._targetTypes = targetTypes;
     }
 
-    get type () { return 'collection' }
+    get type() { return 'collection' }
 
-    get isCollection () {
+    get isCollection() {
       return true
     }
 
-    getItems () {
+    getItems() {
       const doc = this._api.getDocument();
       return substance.documentHelpers.getNodesForIds(doc, this.getValue())
     }
 
-    addItem (item) {
+    addItem(item) {
       // TODO: instead of requiring a bunch of low-level API
       // methods we should instead introduce a Collection API
       // where these low-level things are implemented
@@ -163,76 +164,76 @@
       this._api._appendChild(this._path, item);
     }
 
-    removeItem (item) {
+    removeItem(item) {
       this._api._removeChild(this._path, item.id);
     }
 
-    get length () { return this.getValue().length }
+    get length() { return this.getValue().length }
 
-    getValue () {
+    getValue() {
       return super.getValue() || []
     }
 
-    isEmpty () {
+    isEmpty() {
       return isCollectionEmpty(this._api, this._path)
     }
 
-    hasTargetType (type) {
+    hasTargetType(type) {
       return this._targetTypes.has(type)
     }
   }
 
   class EnumModel extends ValueModel {
-    get type () { return 'enum' }
+    get type() { return 'enum' }
   }
 
   // TODO: this does not seem to be the right approach
   // We have taken this too far, i.e. trying to generate an editor
   // for reference properties without ownership (aka relationships)
   class _RelationshipModel extends ValueModel {
-    constructor (api, path, targetTypes) {
+    constructor(api, path, targetTypes) {
       super(api, path);
 
       this._targetTypes = targetTypes;
     }
 
-    hasTargetType (type) {
+    hasTargetType(type) {
       return this._targetTypes.has(type)
     }
 
-    getAvailableOptions () {
+    getAvailableOptions() {
       return this._api._getAvailableOptions(this)
     }
   }
 
   class ManyRelationshipModel extends _RelationshipModel {
-    get type () { return 'many-relationship' }
+    get type() { return 'many-relationship' }
 
-    getValue () {
+    getValue() {
       return super.getValue() || []
     }
 
-    isEmpty () {
+    isEmpty() {
       return this.getValue().length === 0
     }
 
-    toggleTarget (target) {
+    toggleTarget(target) {
       this._api._toggleRelationship(this._path, target.id);
     }
   }
 
   class NumberModel extends ValueModel {
-    get type () { return 'number' }
+    get type() { return 'number' }
   }
 
   class ObjectModel extends ValueModel {
-    get type () { return 'object' }
+    get type() { return 'object' }
   }
 
   class SingleRelationshipModel extends _RelationshipModel {
-    get type () { return 'single-relationship' }
+    get type() { return 'single-relationship' }
 
-    toggleTarget (target) {
+    toggleTarget(target) {
       let currentTargetId = this.getValue();
       let newTargetId;
       if (currentTargetId === target.id) {
@@ -249,19 +250,19 @@
   }
 
   class StringModel extends ValueModel {
-    get type () { return 'string' }
+    get type() { return 'string' }
 
-    isEmpty () {
+    isEmpty() {
       let value = this.getValue();
       return substance.isNil(value) || value.length === 0
     }
   }
 
   class TextModel extends StringModel {
-    get type () { return 'text' }
+    get type() { return 'text' }
   }
 
-  function createValueModel (api, path, property) {
+  function createValueModel(api, path, property) {
     let doc = api.getDocument();
     if (!property) property = doc.getProperty(path);
     let targetTypes = property.targetTypes;
@@ -315,7 +316,7 @@
     return valueModel
   }
 
-  function createNodePropertyModels (api, node, hooks = {}) {
+  function createNodePropertyModels(api, node, hooks = {}) {
     let properties = new Map();
     for (let p of node.getSchema()) {
       if (p.name === 'id') continue
@@ -349,12 +350,12 @@
     return properties
   }
 
-  function removeModelObserver (comp) {
+  function removeModelObserver(comp) {
     comp.context.editorState.removeObserver(comp);
   }
 
   class AbstractScrollPane extends substance.Component {
-    getActionHandlers () {
+    getActionHandlers() {
       return {
         'scrollSelectionIntoView': this._scrollSelectionIntoView
       }
@@ -362,13 +363,13 @@
     /*
       Expose scrollPane as a child context
     */
-    getChildContext () {
+    getChildContext() {
       return {
         scrollPane: this
       }
     }
 
-    getName () {
+    getName() {
       return this.props.name
     }
 
@@ -376,7 +377,7 @@
       Determine mouse bounds relative to content element
       and emit context-menu:opened event with positioning hints
     */
-    _onContextMenu (e) {
+    _onContextMenu(e) {
       e.preventDefault();
       let mouseBounds = this._getMouseBounds(e);
       this.emit('context-menu:opened', {
@@ -384,7 +385,7 @@
       });
     }
 
-    _scrollRectIntoView (rect) {
+    _scrollRectIntoView(rect) {
       if (!rect) return
       // console.log('AbstractScrollPane._scrollRectIntoView()')
       let upperBound = this.getScrollPosition();
@@ -392,30 +393,30 @@
       let selTop = rect.top;
       let selBottom = rect.top + rect.height;
       if ((selTop < upperBound && selBottom < upperBound) ||
-          (selTop > lowerBound && selBottom > lowerBound)) {
+        (selTop > lowerBound && selBottom > lowerBound)) {
         this.setScrollPosition(selTop);
       }
     }
 
-    _scrollSelectionIntoView () {
+    _scrollSelectionIntoView() {
       this._scrollRectIntoView(this._getSelectionRect());
     }
 
     /**
       Returns the height of scrollPane (inner content overflows)
     */
-    getHeight () {
+    getHeight() {
       throw new Error('Abstract method')
     }
 
     /**
       Returns the cumulated height of a panel's content
     */
-    getContentHeight () {
+    getContentHeight() {
       throw new Error('Abstract method')
     }
 
-    getContentElement () {
+    getContentElement() {
       // TODO: should be wrapped in DefaultDOMElement
       throw new Error('Abstract method')
     }
@@ -423,18 +424,18 @@
     /**
       Get the `.se-scrollable` element
     */
-    getScrollableElement () {
+    getScrollableElement() {
       throw new Error('Abstract method')
     }
 
     /**
       Get current scroll position (scrollTop) of `.se-scrollable` element
     */
-    getScrollPosition () {
+    getScrollPosition() {
       throw new Error('Abstract method')
     }
 
-    setScrollPosition () {
+    setScrollPosition() {
       throw new Error('Abstract method')
     }
 
@@ -456,14 +457,14 @@
       throw new Error('Abstract method')
     }
 
-    _getContentRect () {
+    _getContentRect() {
       return this.getContentElement().getNativeElement().getBoundingClientRect()
     }
 
     /*
       Get selection rectangle relative to panel content element
     */
-    _getSelectionRect () {
+    _getSelectionRect() {
       let appState = this.context.editorState;
       let sel = appState.selection;
       let selectionRect;
@@ -486,7 +487,7 @@
       return selectionRect
     }
 
-    _getMouseBounds (e) {
+    _getMouseBounds(e) {
       return substance.getRelativeMouseBounds(e, this.getContentElement().getNativeElement())
     }
   }
@@ -495,17 +496,17 @@
     /*
       Expose scrollPane as a child context
     */
-    getChildContext () {
+    getChildContext() {
       return {
         scrollPane: this
       }
     }
 
-    getName () {
+    getName() {
       return 'body'
     }
 
-    render ($$) {
+    render($$) {
       let el = $$('div');
       if (this.props.contextMenu === 'custom') {
         el.on('contextmenu', this._onContextMenu);
@@ -517,7 +518,7 @@
     /**
       Returns the height of scrollPane (inner content overflows)
     */
-    getHeight () {
+    getHeight() {
       if (substance.platform.inBrowser) {
         return window.innerHeight
       } else {
@@ -528,7 +529,7 @@
     /**
       Returns the cumulated height of a panel's content
     */
-    getContentHeight () {
+    getContentHeight() {
       if (substance.platform.inBrowser) {
         return document.body.scrollHeight
       } else {
@@ -536,7 +537,7 @@
       }
     }
 
-    getContentElement () {
+    getContentElement() {
       if (substance.platform.inBrowser) {
         return substance.DefaultDOMElement.wrapNativeElement(window.document.body)
       } else {
@@ -547,7 +548,7 @@
     // /**
     //   Get the `.se-scrollable` element
     // */
-    getScrollableElement () {
+    getScrollableElement() {
       if (substance.platform.inBrowser) {
         return document.body
       } else {
@@ -558,7 +559,7 @@
     /**
       Get current scroll position (scrollTop) of `.se-scrollable` element
     */
-    getScrollPosition () {
+    getScrollPosition() {
       if (substance.platform.inBrowser) {
         return document.body.scrollTop
       } else {
@@ -566,7 +567,7 @@
       }
     }
 
-    setScrollPosition (scrollPos) {
+    setScrollPosition(scrollPos) {
       if (substance.platform.inBrowser) {
         document.body.scrollTop = scrollPos;
       }
@@ -592,7 +593,7 @@
   }
 
   class ValueComponent extends substance.Component {
-    didMount () {
+    didMount() {
       const appState = this.context.editorState;
       const path = this._getPath();
       appState.addObserver(['document'], this._rerenderOnModelChange, this, {
@@ -601,29 +602,29 @@
       });
     }
 
-    dispose () {
+    dispose() {
       const appState = this.context.editorState;
       appState.removeObserver(this);
     }
 
     // EXPERIMENTAL:
     // trying to avoid unnecessary rerenderings
-    shouldRerender (newProps) {
+    shouldRerender(newProps) {
       return newProps.model !== this.props.model
     }
 
-    _rerenderOnModelChange () {
+    _rerenderOnModelChange() {
       // console.log('Rerendering ValueComponent after model update:', this._getPath())
       this.rerender();
     }
 
-    _getPath () {
+    _getPath() {
       return this.props.model._path
     }
   }
 
   class CheckboxInput extends substance.Component {
-    render ($$) {
+    render($$) {
       const isChecked = Boolean(this.props.value);
       const icon = isChecked ? 'fa-check-square-o' : 'fa-square-o';
       let el = $$('div').addClass('sc-checkbox')
@@ -635,7 +636,7 @@
       return el
     }
 
-    _onClick (e) {
+    _onClick(e) {
       e.preventDefault();
       e.stopPropagation();
       this.send('toggleValue');
@@ -643,13 +644,13 @@
   }
 
   class BooleanComponent extends ValueComponent {
-    getActionHandlers () {
+    getActionHandlers() {
       return {
         toggleValue: this._toggleValue
       }
     }
 
-    render ($$) {
+    render($$) {
       const model = this.props.model;
       const value = model.getValue();
       let el = $$('div').addClass('sc-boolean');
@@ -662,7 +663,7 @@
       return el
     }
 
-    _toggleValue () {
+    _toggleValue() {
       if (this.context.editable) {
         const model = this.props.model;
         this.props.model.setValue(!model.getValue());
@@ -671,7 +672,7 @@
   }
 
   class Button extends substance.Component {
-    render ($$) {
+    render($$) {
       let el = $$('button')
         .addClass('sc-button');
 
@@ -708,30 +709,30 @@
       return el
     }
 
-    renderIcon ($$) {
+    renderIcon($$) {
       let iconEl = this.context.iconProvider.renderIcon($$, this.props.icon);
       return iconEl
     }
 
-    renderDropdownIcon ($$) {
+    renderDropdownIcon($$) {
       let iconEl = this.context.iconProvider.renderIcon($$, 'dropdown');
       iconEl.addClass('se-dropdown');
       return iconEl
     }
 
-    renderLabel ($$) {
+    renderLabel($$) {
       return $$('span').addClass('se-label').append(
         this.getLabel(this.props.label)
       )
     }
 
-    getLabel (name) {
+    getLabel(name) {
       let labelProvider = this.context.labelProvider;
       return labelProvider.getLabel(name, this.props.commandState)
     }
   }
 
-  function getComponentForModel (context, model) {
+  function getComponentForModel(context, model) {
     let componentRegistry = context.componentRegistry;
     let ComponentClass = componentRegistry.get(model.type);
     if (!ComponentClass) {
@@ -741,7 +742,7 @@
   }
 
   class ChildComponent extends ValueComponent {
-    render ($$) {
+    render($$) {
       const child = this.props.model.getChild();
       let ComponentClass = getComponentForModel(this.context, child);
       let props = Object.assign({}, this.props);
@@ -751,20 +752,20 @@
     }
   }
 
-  function ModifiedSurface (Surface) {
+  function ModifiedSurface(Surface) {
     class _ModifiedSurface extends Surface {
-      constructor (parent, props, options) {
+      constructor(parent, props, options) {
         super(parent, _monkeyPatchSurfaceProps(parent, props), options);
       }
 
-      setProps (newProps) {
+      setProps(newProps) {
         return super.setProps(_monkeyPatchSurfaceProps(this.parent, newProps))
       }
     }
     return _ModifiedSurface
   }
 
-  function _monkeyPatchSurfaceProps (parent, props) {
+  function _monkeyPatchSurfaceProps(parent, props) {
     let newProps = Object.assign({}, props);
     if (props.model && !props.node) {
       const model = props.model;
@@ -786,7 +787,7 @@
 
   class ContainerEditorNew extends ModifiedSurface(substance.ContainerEditor) {
     // overriding default to allow insertion of 'break' nodes instead of '\n'
-    _softBreak () {
+    _softBreak() {
       let editorSession = this.getEditorSession();
       let sel = editorSession.getSelection();
       if (sel.isPropertySelection()) {
@@ -811,7 +812,7 @@
     }
   }
 
-  function getComponentForNode (comp, node) {
+  function getComponentForNode(comp, node) {
     let componentRegistry = comp.context.componentRegistry;
     let ComponentClass = componentRegistry.get(node.type);
     if (!ComponentClass) {
@@ -827,7 +828,7 @@
     return ComponentClass
   }
 
-  function renderNode ($$, comp, node, props = {}) {
+  function renderNode($$, comp, node, props = {}) {
     let NodeComponent = getComponentForNode(comp, node);
     props = Object.assign({
       disabled: comp.props.disabled,
@@ -842,7 +843,7 @@
    * Note: I decided to use the name Collection here as from the application point of view a CHILDREN field is a collection.
    */
   class CollectionComponent extends substance.Component {
-    render ($$) {
+    render($$) {
       const props = this.props;
       const model = props.model;
       let renderAsContainer;
@@ -863,7 +864,7 @@
 
   class ReadOnlyCollection extends ValueComponent {
     // NOTE: this is less efficient than ContainerEditor as it will always render the whole collection
-    render ($$) {
+    render($$) {
       let props = this.props;
       let model = props.model;
       let el = $$('div').addClass('sc-collection').attr('data-id', substance.getKeyForPath(model.getPath()));
@@ -876,7 +877,7 @@
   }
 
   class EditableCollection extends ContainerEditorNew {
-    _getClassNames () {
+    _getClassNames() {
       return 'sc-collection sc-container-editor sc-surface'
     }
   }
@@ -894,22 +895,22 @@
    * @param {object} props.commandStates command states by name
    */
   class ToolGroup extends substance.Component {
-    constructor (...args) {
+    constructor(...args) {
       super(...args);
 
       this._deriveState(this.props);
     }
 
-    willReceiveProps (newProps) {
+    willReceiveProps(newProps) {
       this._deriveState(newProps);
     }
 
-    getTheme () {
+    getTheme() {
       // HACK: falling back to 'light' in a hard-coded way
       return this.props.theme || 'light'
     }
 
-    _deriveState (props) {
+    _deriveState(props) {
       if (this._isTopLevel) {
         this._derivedState = this._deriveGroupState(props, props.commandStates);
       } else {
@@ -917,7 +918,7 @@
       }
     }
 
-    render ($$) {
+    render($$) {
       const { name, hideDisabled } = this.props;
       let el = $$('div')
         .addClass(this._getClassNames())
@@ -932,7 +933,7 @@
       return el
     }
 
-    _renderLabel ($$) {
+    _renderLabel($$) {
       const { style, label } = this.props;
       if (style === 'descriptive' && label) {
         const SeparatorClass = this.getComponent('tool-separator');
@@ -940,7 +941,7 @@
       }
     }
 
-    _renderItems ($$) {
+    _renderItems($$) {
       const { style, hideDisabled, commandStates } = this.props;
       const theme = this.getTheme();
       const { itemStates } = this._derivedState;
@@ -992,10 +993,10 @@
       return els
     }
 
-    get _isTopLevel () { return false }
+    get _isTopLevel() { return false }
 
     // ATTENTION: this is only called for top-level tool groups (Menu, Prompt, ) which are ToolDrop
-    _deriveGroupState (group, commandStates) {
+    _deriveGroupState(group, commandStates) {
       let itemStates = group.items.map(item => this._deriveItemState(item, commandStates));
       let hasEnabledItem = itemStates.some(item => item.enabled || item.hasEnabledItem);
       return {
@@ -1005,7 +1006,7 @@
       }
     }
 
-    _deriveItemState (item, commandStates) {
+    _deriveItemState(item, commandStates) {
       switch (item.type) {
         case 'command': {
           let commandState = commandStates[item.name] || DISABLED;
@@ -1031,11 +1032,11 @@
       }
     }
 
-    _getClassNames () {
+    _getClassNames() {
       return 'sc-tool-group'
     }
 
-    _getToolClass (item) {
+    _getToolClass(item) {
       // use an ToolClass from toolSpec if configured inline in ToolGroup spec
       let ToolClass;
       if (item.ToolClass) {
@@ -1078,12 +1079,12 @@
   }
 
   class ToolPanel extends ToolGroup {
-    get _isTopLevel () { return true }
+    get _isTopLevel() { return true }
   }
 
   // TODO: refactor this. I don't like how this is tight to ScrollPane
   class ContextMenu extends ToolPanel {
-    didMount () {
+    didMount() {
       super.didMount();
       if (!this.context.scrollPane) {
         throw new Error('Requires a scrollPane context')
@@ -1091,12 +1092,12 @@
       this.context.scrollPane.on('context-menu:opened', this._onContextMenuOpened, this);
     }
 
-    dispose () {
+    dispose() {
       super.dispose();
       this.context.scrollPane.off(this);
     }
 
-    render ($$) {
+    render($$) {
       let el = $$('div')
         .addClass(this._getClassNames())
         .addClass('sm-hidden')
@@ -1109,14 +1110,14 @@
       return el
     }
 
-    _getClassNames () {
+    _getClassNames() {
       return 'sc-context-menu'
     }
 
     /*
       Positions the content menu relative to the scrollPane
     */
-    _onContextMenuOpened (hints) {
+    _onContextMenuOpened(hints) {
       // ATTENTION: assuming that the context menu is always only showing enabled tools
       if (this._derivedState.hasEnabledItem) {
         let mouseBounds = hints.mouseBounds;
@@ -1146,7 +1147,7 @@
     ```
   */
   class DialogSectionComponent extends substance.Component {
-    render ($$) {
+    render($$) {
       const label = this.props.label;
       const description = this.props.description;
       const children = this.props.children;
@@ -1171,12 +1172,12 @@
     }
   }
 
-  function getSettings (comp) {
+  function getSettings(comp) {
     let appState = comp.context.editorState;
     return appState.settings
   }
 
-  function renderModel ($$, comp, valueModel, options = {}) {
+  function renderModel($$, comp, valueModel, options = {}) {
     let ValueComponent = comp.getComponent(valueModel.type);
 
     let valueSettings;
@@ -1192,57 +1193,57 @@
     return $$(ValueComponent, props)
   }
 
-  function renderValue ($$, comp, doc, path, options = {}) {
+  function renderValue($$, comp, doc, path, options = {}) {
     let prop = doc.getProperty(path);
     let valueModel = createValueModel(comp.context.editorSession, path, prop);
     return renderModel($$, comp, valueModel, options)
   }
 
-  function NodeComponentMixin (Component) {
+  function NodeComponentMixin(Component) {
     return class NodeComponent extends Component {
-      didMount () {
+      didMount() {
         super.didMount();
         const node = this._getNode();
         this.context.editorState.addObserver(['document'], this._onNodeUpdate, this, { document: { path: [node.id] }, stage: 'render' });
       }
 
-      dispose () {
+      dispose() {
         super.dispose();
 
         this.context.editorState.off(this);
       }
 
-      _getNode () {
+      _getNode() {
         return this.props.node
       }
 
-      _renderValue ($$, propertyName, options = {}) {
+      _renderValue($$, propertyName, options = {}) {
         let node = this._getNode();
         let doc = node.getDocument();
         return renderValue($$, this, doc, [node.id, propertyName], options)
       }
 
-      _onNodeUpdate () {
+      _onNodeUpdate() {
         this.rerender();
       }
     }
   }
 
-  function NodeOverlayEditorMixin (NodeComponent) {
+  function NodeOverlayEditorMixin(NodeComponent) {
     return class NodeComponentWithOverlayEditor extends NodeComponent {
-      constructor (...args) {
+      constructor(...args) {
         super(...args);
 
         this._surfaceId = this.context.parentSurfaceId + '/' + this.props.node.id;
       }
 
-      getChildContext () {
+      getChildContext() {
         return {
           parentSurfaceId: this._surfaceId
         }
       }
 
-      didMount () {
+      didMount() {
         super.didMount();
 
         if (this._shouldEnableOverlayEditor()) {
@@ -1254,7 +1255,7 @@
         }
       }
 
-      dispose () {
+      dispose() {
         super.dispose();
 
         if (this._editor) {
@@ -1264,9 +1265,9 @@
         }
       }
 
-      _shouldEnableOverlayEditor () { return true }
+      _shouldEnableOverlayEditor() { return true }
 
-      _onSelectionStateChange (selectionState) {
+      _onSelectionStateChange(selectionState) {
         let surfaceId = selectionState.selection.surfaceId;
         let isSelected = selectionState.node === this.props.node;
         if ((isSelected || (surfaceId && surfaceId.startsWith(this._surfaceId)))) {
@@ -1276,20 +1277,20 @@
         }
       }
 
-      _getEditorClass () { throwMethodIsAbstract(); }
+      _getEditorClass() { throwMethodIsAbstract(); }
 
-      _acquireOverlay (options) {
+      _acquireOverlay(options) {
         let editor = this._getEditor();
         this.send('acquireOverlay', editor, options);
       }
 
-      _releaseOverlay () {
+      _releaseOverlay() {
         if (this._editor) {
           this.send('releaseOverlay', this._editor);
         }
       }
 
-      _getEditor () {
+      _getEditor() {
         // create editor lazily to avoid that all nodes with such an overlay are creating it
         // at once in the beginning
         if (!this._editor) {
@@ -1299,7 +1300,7 @@
         return this._editor
       }
 
-      _createEditor () {
+      _createEditor() {
         let EditorClass = this._getEditorClass();
         // keep a rendered editor around
         let editor = new EditorClass(this, { node: this.props.node });
@@ -1320,7 +1321,7 @@
    * Furthermore, our need for more complex editors for such popover was increasing (keywords editor, inline-cell editor, etc.)
    */
   class EditableAnnotationComponent extends NodeOverlayEditorMixin(NodeComponentMixin(substance.AnnotationComponent)) {
-    _onSelectionStateChange (selectionState) {
+    _onSelectionStateChange(selectionState) {
       let surfaceId = selectionState.selection.surfaceId;
       let isSelected = selectionState.annos.indexOf(this.props.node) !== -1;
       if ((isSelected || (surfaceId && surfaceId.startsWith(this._surfaceId)))) {
@@ -1341,10 +1342,10 @@
     }
   }
 
-  class NodeComponent extends NodeComponentMixin(substance.Component) {}
+  class NodeComponent extends NodeComponentMixin(substance.Component) { }
 
   class EditableInlineNodeComponent extends NodeOverlayEditorMixin(NodeComponent) {
-    render ($$) {
+    render($$) {
       return $$('span').attr('data-id', this.props.node.id)
     }
   }
@@ -1353,7 +1354,7 @@
     @param {string} props.text
   */
   class Tooltip extends substance.Component {
-    render ($$) {
+    render($$) {
       let el = $$('div').addClass('sc-tooltip');
       el.append(this.props.text);
       return el
@@ -1361,7 +1362,7 @@
   }
 
   class FormRowComponent extends substance.Component {
-    render ($$) {
+    render($$) {
       const label = this.props.label;
       const issues = this.props.issues || [];
       const hasIssues = issues.length > 0;
@@ -1394,7 +1395,7 @@
   }
 
   class InputWithButton extends substance.Component {
-    render ($$) {
+    render($$) {
       let input = this.props.input;
       let button = this.props.button;
 
@@ -1412,7 +1413,7 @@
       - to make all IsolatedNodeComponents 'open'
   */
   class IsolatedNodeComponentNew extends substance.IsolatedNodeComponent {
-    constructor (parent, props, options) {
+    constructor(parent, props, options) {
       super(parent, props, options);
       // HACK: overriding 'closed' IsolatedNodeComponents per se
       // TODO: on the long term we need to understand if it may be better to open
@@ -1433,12 +1434,12 @@
     `commandStates` will be taken from the app-state, and merged with the other props.
     When `commandStates` is changed, Toolbar automatically will be rerendered automatically via extendProps.
   */
-  function Managed (ComponentClass) {
+  function Managed(ComponentClass) {
     if (_ManagedComponentCache.has(ComponentClass)) return _ManagedComponentCache.get(ComponentClass)
 
     // an anonymous class that takes care of mapping props that start with $
     class ManagedComponent extends substance.Component {
-      constructor (...args) {
+      constructor(...args) {
         super(...args);
 
         if (!this.context.editorState) {
@@ -1448,13 +1449,13 @@
         this._props = this._deriveManagedProps(this.props);
       }
 
-      didMount () {
+      didMount() {
         if (this._config) {
           this._register();
         }
       }
 
-      willReceiveProps (newProps) {
+      willReceiveProps(newProps) {
         let config = this._compileManagedProps(newProps);
         let props = this._deriveManagedProps(newProps);
         if (!this._config && config) {
@@ -1466,29 +1467,29 @@
         this._props = props;
       }
 
-      dispose () {
+      dispose() {
         this.context.editorState.off(this);
       }
 
-      render ($$) {
+      render($$) {
         return $$(ComponentClass, this._props).ref('managed')
       }
 
-      _register () {
+      _register() {
         const { stage, names } = this._config;
         this.context.editorState.addObserver(names, this._onUpdate, this, { stage });
       }
 
-      _deregister () {
+      _deregister() {
         this.context.editorState.off(this);
       }
 
-      _onUpdate () {
+      _onUpdate() {
         this._props = this._deriveManagedProps();
         this.refs.managed.extendProps(this._props);
       }
 
-      _compileManagedProps (props) {
+      _compileManagedProps(props) {
         let stage = 'render';
         let names = props.bindings || [];
         if (names.length > 0) {
@@ -1498,7 +1499,7 @@
         }
       }
 
-      _deriveManagedProps (props) {
+      _deriveManagedProps(props) {
         const state = this.context.editorState;
         const config = this._config;
         if (config) {
@@ -1519,34 +1520,34 @@
     return ManagedComponent
   }
 
-  function OverlayMixin (Component) {
+  function OverlayMixin(Component) {
     class OverlayComponent extends Component {
-      didMount () {
+      didMount() {
         super.didMount();
 
         let appState = this.context.editorState;
         appState.addObserver(['overlayId'], this._onOverlayIdHasChanged, this, { stage: 'render' });
       }
 
-      dispose () {
+      dispose() {
         super.dispose();
 
         this.context.editorState.removeObserver(this);
       }
 
-      _getOverlayId () {
+      _getOverlayId() {
         return this.getId()
       }
 
-      _canShowOverlay () {
+      _canShowOverlay() {
         return this.context.editorState.overlayId === this._getOverlayId()
       }
 
-      _toggleOverlay () {
+      _toggleOverlay() {
         this.send('toggleOverlay', this._getOverlayId());
       }
 
-      _onOverlayIdHasChanged () {
+      _onOverlayIdHasChanged() {
         // console.log('Rerendering overlay component because overlay id has changed', this._getOverlayId())
         this.rerender();
       }
@@ -1555,17 +1556,17 @@
   }
 
   class MultiSelectInput extends OverlayMixin(substance.Component) {
-    getInitialState () {
+    getInitialState() {
       return {
         isExpanded: this._canShowOverlay()
       }
     }
 
-    willReceiveProps () {
+    willReceiveProps() {
       this.extendState(this.getInitialState());
     }
 
-    render ($$) {
+    render($$) {
       const selected = this.props.selected;
       const isEmpty = selected.length === 0;
       const selectedLabels = selected.map(item => item.toString());
@@ -1591,7 +1592,7 @@
       return el
     }
 
-    _renderOptions ($$) {
+    _renderOptions($$) {
       const label = this.props.label;
       const selected = this.props.selected;
       const selectedIdx = selected.map(item => item.id);
@@ -1616,25 +1617,25 @@
       return editorEl
     }
 
-    _getOverlayId () {
+    _getOverlayId() {
       return this.props.overlayId || this.getId()
     }
 
-    _getOptions () {
+    _getOptions() {
       return this.getParent().getAvailableOptions()
     }
 
-    _stopAndPreventDefault (event) {
+    _stopAndPreventDefault(event) {
       event.stopPropagation();
       event.preventDefault();
     }
 
-    _onClick (event) {
+    _onClick(event) {
       this._stopAndPreventDefault(event);
       super._toggleOverlay();
     }
 
-    _onOverlayIdHasChanged () {
+    _onOverlayIdHasChanged() {
       let overlayId = this.context.editorState.overlayId;
       let id = this._getOverlayId();
       let needUpdate = false;
@@ -1648,7 +1649,7 @@
       }
     }
 
-    _onToggleItem (option, event) {
+    _onToggleItem(option, event) {
       event.stopPropagation();
       event.preventDefault();
       this.send('toggleOption', option);
@@ -1656,7 +1657,7 @@
   }
 
   class ManyRelationshipComponent extends ValueComponent {
-    didMount () {
+    didMount() {
       // ATTENTION: relationships are unfortunately tricky regarding updates
       // obvious things are covered by the used helper, e.g., if the model is changed
       // or a one of the used targets has been removed
@@ -1667,11 +1668,11 @@
       this.context.editorState.addObserver(['document'], this._rerenderOnModelChangeIfNecessary, this, { stage: 'render' });
     }
 
-    dispose () {
+    dispose() {
       this.context.editorState.removeObserver(this);
     }
 
-    render ($$) {
+    render($$) {
       const label = this.getLabel('select-item') + ' ' + this.props.label;
       const options = this.getAvailableOptions();
       let selected = this._getSelectedOptions(options);
@@ -1692,22 +1693,22 @@
       return el
     }
 
-    _getClassNames () {
+    _getClassNames() {
       return 'sc-many-relationship'
     }
 
-    getActionHandlers () {
+    getActionHandlers() {
       return {
         toggleOption: this._toggleTarget,
         toggleOverlay: this._toggleOverlay
       }
     }
 
-    getAvailableOptions () {
+    getAvailableOptions() {
       return this.props.model.getAvailableOptions()
     }
 
-    _getSelectedOptions (options) {
+    _getSelectedOptions(options) {
       // pick all selected items from options this makes life easier for the MutliSelectComponent
       // because it does not need to map via ids, just can check equality
       let targetIds = this.props.model.getValue();
@@ -1715,13 +1716,13 @@
       return selected
     }
 
-    _toggleTarget (target) {
+    _toggleTarget(target) {
       if (this.context.editable) {
         this.props.model.toggleTarget(target);
       }
     }
 
-    _toggleOverlay () {
+    _toggleOverlay() {
       const appState = this.context.editorState;
       let overlayId = appState.overlayId;
       let modelId = this.props.model.id;
@@ -1739,7 +1740,7 @@
       }
     }
 
-    _rerenderOnModelChangeIfNecessary (change) {
+    _rerenderOnModelChangeIfNecessary(change) {
       let updateNeeded = Boolean(change.hasUpdated(this._getPath()));
       if (!updateNeeded) {
         let ids = this.props.model.getValue();
@@ -1760,7 +1761,7 @@
       }
     }
 
-    _rerenderOnModelChange () {
+    _rerenderOnModelChange() {
       // console.log('Rerendering RelationshipComponent because model has changed', this._getPath())
       this.rerender();
     }
@@ -1784,13 +1785,13 @@
     ```
   */
   class ModalDialog extends substance.Component {
-    getActionHandlers () {
+    getActionHandlers() {
       return {
         'close': this.close
       }
     }
 
-    render ($$) {
+    render($$) {
       let width = this.props.width || 'large';
       let el = $$('div').addClass(this._getClassName());
       if (this.props.width) {
@@ -1818,11 +1819,11 @@
       return el
     }
 
-    _getClassName () {
+    _getClassName() {
       return 'sc-modal-dialog'
     }
 
-    _renderModalBody ($$) {
+    _renderModalBody($$) {
       const Button = this.getComponent('button');
       const closeButton = $$(Button, {
         icon: 'close'
@@ -1837,17 +1838,17 @@
       return modalBody
     }
 
-    _onKeydown (e) {
+    _onKeydown(e) {
       e.stopPropagation();
     }
 
-    _onCloseButtonClick (e) {
+    _onCloseButtonClick(e) {
       e.preventDefault();
       e.stopPropagation();
       this.close();
     }
 
-    close () {
+    close() {
       // let the content handl
       let content = this._getContent();
       if (content.beforeClose) {
@@ -1859,7 +1860,7 @@
       this.send('closeModal');
     }
 
-    _getContent () {
+    _getContent() {
       // Unfortunately we can not have a ref on the content,
       // because it is passed as property.
       // ATM, Substance allows only the owner to set a ref.
@@ -1869,17 +1870,17 @@
   }
 
   class ModelComponent extends substance.Component {
-    didMount () {
+    didMount() {
       addModelObserver(this.props.model, this.rerender, this);
     }
 
-    dispose () {
+    dispose() {
       removeModelObserver(this);
     }
 
     // EXPERIMENTAL:
     // trying to avoid unnecessary rerenderings
-    shouldRerender (newProps) {
+    shouldRerender(newProps) {
       return newProps.model !== this.props.model
     }
   }
@@ -1887,10 +1888,10 @@
   /*
     Overridden version of Substance.Surface with modifications from 'ModifiedSurface'
   */
-  class SurfaceNew extends ModifiedSurface(substance.Surface) {}
+  class SurfaceNew extends ModifiedSurface(substance.Surface) { }
 
   class TextInput extends SurfaceNew {
-    render ($$) {
+    render($$) {
       const TextPropertyComponent = this.getComponent('text-property');
       const placeholder = this.props.placeholder;
       const path = this.props.path;
@@ -1922,18 +1923,18 @@
     }
 
     // this is needed e.g. by SelectAllCommand
-    get _isTextPropertyEditor () {
+    get _isTextPropertyEditor() {
       return true
     }
 
     // this is needed e.g. by SelectAllCommand
-    getPath () {
+    getPath() {
       return this.props.path
     }
   }
 
   class StringComponent extends substance.Component {
-    render ($$) {
+    render($$) {
       let placeholder = this.props.placeholder;
       let model = this.props.model;
       let path = model.getPath();
@@ -1962,19 +1963,19 @@
       return el
     }
 
-    getClassNames () {
+    getClassNames() {
       return 'sc-string'
     }
   }
 
   class TextComponent extends StringComponent {
-    getClassNames () {
+    getClassNames() {
       return 'sc-text'
     }
   }
 
   class ObjectComponent extends ValueComponent {
-    render ($$) {
+    render($$) {
       let el = $$('div').addClass('sc-object');
       // TODO: implement a default editor for object type values
       return el
@@ -1982,11 +1983,11 @@
   }
 
   class SingleRelationshipComponent extends ManyRelationshipComponent {
-    _getClassNames () {
+    _getClassNames() {
       return 'sc-single-relationship'
     }
 
-    _getSelectedOptions (options) {
+    _getSelectedOptions(options) {
       let targetId = this.props.model.getValue();
       if (!targetId) return []
       let selectedOption = options.find(item => {
@@ -2002,9 +2003,9 @@
       NOTE: text updates are observed by TextPropertyComponent
       If necessary override this method and add other observers
     */
-    didMount () {}
+    didMount() { }
 
-    render ($$) {
+    render($$) {
       let parentSurface = this.context.surface;
       let TextPropertyComponent;
       // render the TextNode as Surface if the parent is not a ContainerEditor
@@ -2032,11 +2033,11 @@
       return el
     }
 
-    getTagName () {
+    getTagName() {
       return 'div'
     }
 
-    getClassNames () {
+    getClassNames() {
       // TODO: don't violate the 'sc-' contract
       return 'sc-text-node sm-' + this.props.node.type
     }
@@ -2044,7 +2045,7 @@
 
   var ModelComponentPackage = {
     name: 'Model Components',
-    configure (configurator) {
+    configure(configurator) {
       // TODO: maybe we want to use just '<type>' as name instead of '<type>-model'
       configurator.addComponent('boolean', BooleanComponent);
       configurator.addComponent('child', ChildComponent);
@@ -2062,12 +2063,12 @@
   };
 
   class OverlayCanvas extends substance.Component {
-    constructor (...args) {
+    constructor(...args) {
       super(...args);
 
       this._items = new Map();
     }
-    didMount () {
+    didMount() {
       super.didMount();
 
       this._positionOverlay();
@@ -2078,7 +2079,7 @@
       this.context.editorState.addObserver(['@any'], this._positionOverlay, this, { stage: 'position' });
     }
 
-    dispose () {
+    dispose() {
       super.dispose();
 
       this.context.editorState.removeObserver(this);
@@ -2086,16 +2087,16 @@
       this.refs.canvas.empty();
     }
 
-    didUpdate () {
+    didUpdate() {
       super.didUpdate();
 
       this._positionOverlay();
     }
 
     // This component manages itself and does not need to be rerendered
-    shouldRerender () { return false }
+    shouldRerender() { return false }
 
-    render ($$) {
+    render($$) {
       let el = $$('div').addClass('sc-overlay-canvas');
       el.addClass('sm-hidden');
       el.addClass('sm-theme-' + this.getTheme());
@@ -2105,29 +2106,29 @@
       return el
     }
 
-    getTheme () {
+    getTheme() {
       // HACK: falling back to 'light' in a hard-coded way
       return this.props.theme || 'light'
     }
 
-    acquireOverlay (comp, options = {}) {
+    acquireOverlay(comp, options = {}) {
       // if (!this._items.has(comp.__id__)) console.log('acquiring overlay', comp, comp.__id__)
       this._toBeAdded.push({ comp, options });
     }
 
-    releaseOverlay (comp) {
+    releaseOverlay(comp) {
       if (this._items.has(comp.__id__)) {
         // console.log('releasing overlay', comp, comp.__id__)
         this._toBeRemoved.push(comp);
       }
     }
 
-    _reset () {
+    _reset() {
       this._toBeAdded = [];
       this._toBeRemoved = [];
     }
 
-    _updateOverlayCanvas () {
+    _updateOverlayCanvas() {
       this._toBeRemoved.forEach(comp => {
         this._items.delete(comp.__id__);
         comp.el.remove();
@@ -2142,19 +2143,19 @@
       });
     }
 
-    _getCurrentOverlayContent () {
+    _getCurrentOverlayContent() {
       return this.refs.canvas.getChildAt(0)
     }
 
-    _clearCanvas () {
+    _clearCanvas() {
       this.refs.canvas.getElement().empty();
     }
 
-    _getContentPanel () {
+    _getContentPanel() {
       return this.props.panel || this.props.panelProvider()
     }
 
-    _positionOverlay () {
+    _positionOverlay() {
       if (this._items.size === 0) {
         this.el.addClass('sm-hidden');
         return
@@ -2195,7 +2196,7 @@
   }
 
   class PinnedMessage extends substance.Component {
-    render ($$) {
+    render($$) {
       const icon = this.props.icon;
       const label = this.props.label;
 
@@ -2243,7 +2244,7 @@
     ```
   */
   class ScrollPane extends AbstractScrollPane {
-    didMount () {
+    didMount() {
       super.didMount();
 
       if (this.refs.scrollbar) {
@@ -2259,7 +2260,7 @@
       }
     }
 
-    dispose () {
+    dispose() {
       super.dispose();
 
       if (this.domObserver) {
@@ -2267,7 +2268,7 @@
       }
     }
 
-    render ($$) {
+    render($$) {
       let el = $$('div')
         .addClass('sc-scroll-pane');
 
@@ -2309,7 +2310,7 @@
       return el
     }
 
-    renderContent ($$) {
+    renderContent($$) {
       let contentEl = $$('div').ref('content').addClass('se-content');
       contentEl.append(this.props.children);
       if (this.props.contextMenu === 'custom') {
@@ -2318,11 +2319,11 @@
       return contentEl
     }
 
-    _onContentChanged () {
+    _onContentChanged() {
       this._contentChanged = true;
     }
 
-    _afterRender () {
+    _afterRender() {
       super._afterRender();
 
       if (this.refs.scrollbar && this._contentChanged) {
@@ -2331,13 +2332,13 @@
       }
     }
 
-    _updateScrollbar () {
+    _updateScrollbar() {
       if (this.refs.scrollbar) {
         this.refs.scrollbar.updatePositions();
       }
     }
 
-    onScroll () {
+    onScroll() {
       let scrollPos = this.getScrollPosition();
       let scrollable = this.refs.scrollable;
       if (this.props.onScroll) {
@@ -2349,7 +2350,7 @@
     /**
       Returns the height of scrollPane (inner content overflows)
     */
-    getHeight () {
+    getHeight() {
       let scrollableEl = this.getScrollableElement();
       return scrollableEl.height
     }
@@ -2357,7 +2358,7 @@
     /**
       Returns the cumulated height of a panel's content
     */
-    getContentHeight () {
+    getContentHeight() {
       let contentEl = this.refs.content.el.getNativeElement();
       // Important to use scrollHeight here (e.g. to consider overflowing
       // content, that stretches the content area, such as an overlay or
@@ -2368,26 +2369,26 @@
     /**
       Get the `.se-content` element
     */
-    getContentElement () {
+    getContentElement() {
       return this.refs.content.el
     }
 
     /**
       Get the `.se-scrollable` element
     */
-    getScrollableElement () {
+    getScrollableElement() {
       return this.refs.scrollable.el
     }
 
     /**
       Get current scroll position (scrollTop) of `.se-scrollable` element
     */
-    getScrollPosition () {
+    getScrollPosition() {
       let scrollableEl = this.getScrollableElement();
       return scrollableEl.getProperty('scrollTop')
     }
 
-    setScrollPosition (scrollPos) {
+    setScrollPosition(scrollPos) {
       // console.log('ScrollPane.setScrollPosition()')
       let scrollableEl = this.getScrollableElement();
       scrollableEl.setProperty('scrollTop', scrollPos);
@@ -2398,7 +2399,7 @@
 
       @param {DOMNode} el DOM node that lives inside the
     */
-    getPanelOffsetForElement (el) {
+    getPanelOffsetForElement(el) {
       let contentContainerEl = this.refs.content.el;
       let rect = substance.getRelativeBoundingRect(el, contentContainerEl);
       return rect.top
@@ -2409,7 +2410,7 @@
 
       @param {String} componentId component id, must be present in data-id attribute
     */
-    scrollTo (selector, onlyIfNotVisible) {
+    scrollTo(selector, onlyIfNotVisible) {
       // console.log('ScrollPane.scrollTo()', selector)
       let scrollableEl = this.getScrollableElement();
       let el = scrollableEl.find(selector);
@@ -2420,7 +2421,7 @@
       }
     }
 
-    scrollElementIntoView (el, onlyIfNotVisible) {
+    scrollElementIntoView(el, onlyIfNotVisible) {
       // console.log('ScrollPane.scrollTo()', selector)
       let scrollableEl = this.getScrollableElement();
       const offset = this.getPanelOffsetForElement(el);
@@ -2435,18 +2436,18 @@
       }
     }
 
-    _onResize (...args) {
+    _onResize(...args) {
       super._onResize(...args);
       this._updateScrollbar();
     }
 
-    _onContextMenu (e) {
+    _onContextMenu(e) {
       super._onContextMenu(e);
       this._updateScrollbar();
     }
   }
 
-  class TextPropertyEditorNew extends ModifiedSurface(substance.TextPropertyEditor) {}
+  class TextPropertyEditorNew extends ModifiedSurface(substance.TextPropertyEditor) { }
 
   /**
    *
@@ -2456,7 +2457,7 @@
    * @param {object} props.commandState
    */
   class Tool extends substance.Component {
-    render ($$) {
+    render($$) {
       const { style, theme, commandState } = this.props;
       let el;
       switch (style) {
@@ -2509,11 +2510,11 @@
       return el
     }
 
-    click () {
+    click() {
       return this.el.click()
     }
 
-    executeCommand (params) {
+    executeCommand(params) {
       const { item, commandState } = this.props;
       // TODO: rethink this. Should we inhibit command execution here
       // or rely on the command not to execute when disabled?
@@ -2522,24 +2523,24 @@
       }
     }
 
-    getClassNames () {
+    getClassNames() {
       return `sc-tool sm-${this.props.item.name}`
     }
 
-    _getLabel () {
+    _getLabel() {
       const { item, commandState } = this.props;
       const labelName = item.label || item.name;
       const labelProvider = this.context.labelProvider;
       return labelProvider.getLabel(labelName, commandState)
     }
 
-    _getIconName () {
+    _getIconName() {
       const item = this.props.item;
       const iconName = item.icon || item.name;
       return iconName
     }
 
-    _getKeyboardShortcut () {
+    _getKeyboardShortcut() {
       const name = this.props.item.name;
       const config = this.context.config;
       let entry = config.getKeyboardShortcutsByCommandName(name);
@@ -2548,7 +2549,7 @@
       }
     }
 
-    _getTooltipText () {
+    _getTooltipText() {
       const label = this._getLabel();
       const keyboardShortcut = this._getKeyboardShortcut();
       if (keyboardShortcut) {
@@ -2558,38 +2559,38 @@
       }
     }
 
-    _renderLabel ($$) {
+    _renderLabel($$) {
       return $$('div').addClass('se-label').append(
         this._getLabel()
       )
     }
 
-    _renderIcon ($$) {
+    _renderIcon($$) {
       const iconName = this._getIconName();
       return $$('div').addClass('se-icon').append(
         this.context.iconProvider.renderIcon($$, iconName)
       )
     }
 
-    _renderKeyboardShortcut ($$) {
+    _renderKeyboardShortcut($$) {
       const keyboardShortcut = this._getKeyboardShortcut();
       return $$('div').addClass('se-keyboard-shortcut').append(
         keyboardShortcut || ''
       )
     }
 
-    _onClick (e) {
+    _onClick(e) {
       e.preventDefault();
       e.stopPropagation();
       this.executeCommand();
     }
 
-    _onMousedown (e) {
+    _onMousedown(e) {
       e.preventDefault();
     }
 
     // this is used by TextureConfigurator
-    get _isTool () {
+    get _isTool() {
       return true
     }
   }
@@ -2601,13 +2602,13 @@
    * @param {object} props.commandState
    */
   class ToggleTool extends Tool {
-    getClassNames () {
+    getClassNames() {
       return `sc-toggle-tool sc-tool sm-${this.props.item.name}`
     }
   }
 
   class Toolbar extends ToolPanel {
-    render ($$) {
+    render($$) {
       let el = $$('div').addClass('sc-toolbar');
       el.append(
         $$('div').addClass('se-active-tools').append(
@@ -2620,13 +2621,13 @@
 
   // TODO: use OverlayMixin to avoid code redundancy
   class ToolDropdown extends ToolGroup {
-    didMount () {
+    didMount() {
       this.context.editorState.addObserver(['overlayId'], this.rerender, this, { stage: 'render' });
     }
-    dispose () {
+    dispose() {
       this.context.editorState.removeObserver(this);
     }
-    render ($$) {
+    render($$) {
       const appState = this.context.editorState;
       const { commandStates, style, theme, hideDisabled, alwaysVisible } = this.props;
       const toggleName = this._getToggleName();
@@ -2680,18 +2681,18 @@
       return el
     }
 
-    _renderToolTip ($$) {
+    _renderToolTip($$) {
       let labelProvider = this.context.labelProvider;
       return $$(Tooltip, {
         text: labelProvider.getLabel(this.props.name)
       })
     }
 
-    get _isTopLevel () {
+    get _isTopLevel() {
       return true
     }
 
-    _deriveState (props) {
+    _deriveState(props) {
       super._deriveState(props);
 
       if (this.props.displayActiveCommand) {
@@ -2699,7 +2700,7 @@
       }
     }
 
-    _getActiveCommandName (items, commandStates) {
+    _getActiveCommandName(items, commandStates) {
       // FIXME: getting an active commandName does only make sense for a flat dropdown
       for (let item of items) {
         if (item.type === 'command') {
@@ -2712,7 +2713,7 @@
       }
     }
 
-    _getToggleName () {
+    _getToggleName() {
       if (this.props.displayActiveCommand) {
         return this._derivedState.activeCommandName || this.props.name
       } else {
@@ -2720,11 +2721,11 @@
       }
     }
 
-    _onMousedown (event) {
+    _onMousedown(event) {
       event.preventDefault();
     }
 
-    _onClick (event) {
+    _onClick(event) {
       event.preventDefault();
       event.stopPropagation();
       if (this._hasChoices()) {
@@ -2732,13 +2733,13 @@
       }
     }
 
-    _hasChoices () {
+    _hasChoices() {
       return (!this.props.hideDisabled || this._derivedState.hasEnabledItem)
     }
   }
 
   class ToolSpacer extends substance.Component {
-    render ($$) {
+    render($$) {
       return $$('div').addClass('sc-tool-spacer')
     }
   }
@@ -2746,7 +2747,7 @@
   const ESCAPE = substance.parseKeyEvent(substance.parseKeyCombo('Escape'));
 
   class Input extends substance.Component {
-    render ($$) {
+    render($$) {
       let { path, type, placeholder } = this.props;
       let val = this._getDocumentValue();
 
@@ -2763,7 +2764,7 @@
       return el
     }
 
-    submit () {
+    submit() {
       let editorSession = this.context.editorSession;
       let path = this.props.path;
       let newVal = this.el.val();
@@ -2776,11 +2777,11 @@
       }
     }
 
-    focus () {
+    focus() {
       this.el.getNativeElement().focus();
     }
 
-    _onChange () {
+    _onChange() {
       if (this.submit() && this.props.retainFocus) {
         // ATTENTION: running the editor flow will rerender the model selection
         // which takes away the focus from this input
@@ -2788,7 +2789,7 @@
       }
     }
 
-    _getDocumentValue () {
+    _getDocumentValue() {
       if (this.props.val) {
         return this.props.val
       } else {
@@ -2798,7 +2799,7 @@
       }
     }
 
-    _onKeydown (event) {
+    _onKeydown(event) {
       let combo = substance.parseKeyEvent(event);
       switch (combo) {
         // ESCAPE reverts the current pending change
@@ -2809,13 +2810,13 @@
           break
         }
         default:
-          // nothing
+        // nothing
       }
     }
   }
 
   class ToolSeparator extends substance.Component {
-    render ($$) {
+    render($$) {
       const label = this.props.label;
       let el = $$('div').addClass('sc-tool-separator');
       if (label) {
@@ -2915,7 +2916,7 @@
   };
 
   class Table extends substance.DocumentNode {
-    constructor (...args) {
+    constructor(...args) {
       super(...args);
 
       this._matrix = null;
@@ -2926,12 +2927,12 @@
       this._enableCaching();
     }
 
-    get (cellId) {
+    get(cellId) {
       if (!this._cellIds.has(cellId)) throw new Error('Cell is not part of this table.')
       return this.document.get(cellId)
     }
 
-    getCellMatrix () {
+    getCellMatrix() {
       if (!this._matrix) {
         let spanningCells = [];
         let rows = this.getRows();
@@ -2956,27 +2957,27 @@
       return this._matrix
     }
 
-    getRowCount () {
+    getRowCount() {
       return this.rows.length
     }
 
-    getColumnCount () {
+    getColumnCount() {
       if (this.rows.length === 0) return 0
       let doc = this.getDocument();
       let firstRow = doc.get(this.rows[0]);
       return firstRow.cells.length
     }
 
-    getDimensions () {
+    getDimensions() {
       return [this.getRowCount(), this.getColumnCount()]
     }
 
-    getRowAt (rowIdx) {
+    getRowAt(rowIdx) {
       let doc = this.getDocument();
       return doc.get(this.rows[rowIdx])
     }
 
-    getCell (rowIdx, colIdx) {
+    getCell(rowIdx, colIdx) {
       const matrix = this.getCellMatrix();
       let row = matrix[rowIdx];
       if (row) {
@@ -2984,11 +2985,11 @@
       }
     }
 
-    getRows () {
+    getRows() {
       return substance.documentHelpers.getNodesForIds(this.getDocument(), this.rows)
     }
 
-    _enableCaching () {
+    _enableCaching() {
       // this hook is used to invalidate cached positions
       if (this.document) {
         this._rowIds = new Set(this.rows);
@@ -3000,7 +3001,7 @@
       }
     }
 
-    _onOperationApplied (op) {
+    _onOperationApplied(op) {
       if (!op.path) return
       let nodeId = op.path[0];
       let hasChanged = false;
@@ -3018,7 +3019,7 @@
           this._rowIds.add(rowId);
         }
         hasChanged = true;
-      // whenever a row is changed belonging to this table
+        // whenever a row is changed belonging to this table
       } else if (this._rowIds.has(nodeId) && op.path[1] === 'cells') {
         let update = op.getValueOp();
         if (update.isDelete()) {
@@ -3027,7 +3028,7 @@
           this._cellIds.add(update.getValue());
         }
         hasChanged = true;
-      // whenever rowspan/colspan of cell is changed, that belongs to this table
+        // whenever rowspan/colspan of cell is changed, that belongs to this table
       } else if (this._cellIds.has(nodeId) && (op.path[1] === 'rowspan' || op.path[1] === 'colspan')) {
         hasChanged = true;
       }
@@ -3039,15 +3040,15 @@
       }
     }
 
-    _hasShaChanged (sha) {
+    _hasShaChanged(sha) {
       return (this._sha !== sha)
     }
 
-    _getSha () {
+    _getSha() {
       return this._sha
     }
 
-    static getTemplate (options = {}) {
+    static getTemplate(options = {}) {
       let headerRowCount = options.headerRows || 1;
       let rowCount = options.rows || 3;
       let colCount = options.cols || 4;
@@ -3060,7 +3061,7 @@
       }
     }
 
-    static getRowsTemplate (rowCount, colCount, heading) {
+    static getRowsTemplate(rowCount, colCount, heading) {
       return Array(rowCount).fill().map(_ => {
         return {
           type: 'table-row',
@@ -3069,7 +3070,7 @@
       })
     }
 
-    static getCellsTemplate (colCount, heading) {
+    static getCellsTemplate(colCount, heading) {
       return Array(colCount).fill().map(_ => {
         return {
           type: 'table-cell',
@@ -3078,7 +3079,7 @@
       })
     }
 
-    static get refType () {
+    static get refType() {
       return 'table'
     }
   }
@@ -3088,7 +3089,7 @@
     rows: substance.CHILDREN('table-row')
   };
 
-  function _shadowSpanned (matrix, row, col, rowspan, colspan, masterCell) {
+  function _shadowSpanned(matrix, row, col, rowspan, colspan, masterCell) {
     if (!rowspan && !colspan) return
     for (let i = row; i <= row + rowspan - 1; i++) {
       for (let j = col; j <= col + colspan - 1; j++) {
@@ -3100,7 +3101,7 @@
     }
   }
 
-  function createTableSelection (tableId, data, surfaceId) {
+  function createTableSelection(tableId, data, surfaceId) {
     if (!data.anchorCellId || !data.focusCellId) throw new Error('Invalid selection data')
     return {
       type: 'custom',
@@ -3111,18 +3112,18 @@
     }
   }
 
-  function getSelectionData (sel) {
+  function getSelectionData(sel) {
     if (sel && sel.customType === 'table') {
       return sel.data
     }
     return {}
   }
 
-  function getSelectedRange (table, selData) {
+  function getSelectedRange(table, selData) {
     return getCellRange(table, selData.anchorCellId, selData.focusCellId)
   }
 
-  function computeSelectionRectangle (ulRect, lrRect) {
+  function computeSelectionRectangle(ulRect, lrRect) {
     let selRect = {};
     selRect.top = ulRect.top;
     selRect.left = ulRect.left;
@@ -3131,7 +3132,7 @@
     return selRect
   }
 
-  function getCellRange (table, anchorCellId, focusCellId) {
+  function getCellRange(table, anchorCellId, focusCellId) {
     let anchorCell = table.get(anchorCellId);
     let focusCell = table.get(focusCellId);
     let startRow = Math.min(anchorCell.rowIdx, focusCell.rowIdx);
@@ -3141,7 +3142,7 @@
     return { startRow, startCol, endRow, endCol }
   }
 
-  function computeUpdatedSelection (table, selData, dr, dc, expand) {
+  function computeUpdatedSelection(table, selData, dr, dc, expand) {
     let focusCellId = selData.focusCellId;
     let focusCell = table.get(focusCellId);
     let rowIdx = focusCell.rowIdx;
@@ -3178,7 +3179,7 @@
     }
   }
 
-  function generateTable (doc, nrows, ncols, tableId) {
+  function generateTable(doc, nrows, ncols, tableId) {
     return substance.documentHelpers.createNodeFromJson(doc, Table.getTemplate({
       id: tableId,
       headerRows: 1,
@@ -3187,7 +3188,7 @@
     }))
   }
 
-  function createTableFromTabularData (doc, data, tableId) {
+  function createTableFromTabularData(doc, data, tableId) {
     return substance.documentHelpers.createNodeFromJson(doc, {
       id: tableId,
       type: 'table',
@@ -3219,7 +3220,7 @@
     getRangeFromMatrix: getRangeFromMatrix
   });
 
-  class Abstract extends substance.DocumentNode {}
+  class Abstract extends substance.DocumentNode { }
 
   Abstract.schema = {
     type: 'abstract',
@@ -3230,13 +3231,13 @@
   };
 
   class Affiliation extends substance.DocumentNode {
-    toString () {
+    toString() {
       return this.render().join('')
     }
 
-    render (options = {}) {
+    render(options = {}) {
       let { institution, division1, division2, division3 } = this;
-      let result = institution ? [ institution ] : '???';
+      let result = institution ? [institution] : '???';
       // TODO: do we really want this? Because the divisions might
       // be necessary to really understand the displayed name
       if (!options.short && institution) {
@@ -3284,7 +3285,7 @@
 
   const BLOCK_LEVEL = ['block-formula', 'block-quote', 'figure', 'heading', 'list', 'paragraph', 'preformat', 'table-figure'];
 
-  class Article extends substance.DocumentNode {}
+  class Article extends substance.DocumentNode { }
   Article.schema = {
     type: 'article',
     metadata: substance.CHILD('metadata'),
@@ -3299,7 +3300,7 @@
 
   // Note: this is used as a indicator class for all types of references
   class Reference extends substance.DocumentNode {
-    static get refType () {
+    static get refType() {
       return 'bibr'
     }
   }
@@ -3322,7 +3323,7 @@
       <article-title>A prospective randomized trial examining...</article-title>
     </element-citation>
   */
-  class ArticleRef extends Reference {}
+  class ArticleRef extends Reference { }
   ArticleRef.schema = {
     type: 'article-ref', // publication-type="article"
     title: substance.STRING, // <article-title>
@@ -3338,7 +3339,7 @@
   };
 
   class BlockFormula extends substance.DocumentNode {
-    static get refType () {
+    static get refType() {
       return 'disp-formula'
     }
   }
@@ -3351,7 +3352,7 @@
 
   class BlockQuote extends substance.DocumentNode {
     // used to create an empty node
-    static getTemplate () {
+    static getTemplate() {
       return {
         type: 'block-quote',
         content: [
@@ -3367,10 +3368,10 @@
   };
 
   class Body extends substance.ContainerMixin(substance.DocumentNode) {
-    getContent () {
+    getContent() {
       return this.content
     }
-    getContentPath () {
+    getContentPath() {
       return [this.id, 'content']
     }
   }
@@ -3382,12 +3383,12 @@
     })
   };
 
-  class Annotation extends substance.PropertyAnnotation {}
+  class Annotation extends substance.PropertyAnnotation { }
   Annotation.schema = {
     type: 'annotation'
   };
 
-  class Bold extends Annotation {}
+  class Bold extends Annotation { }
   Bold.schema = {
     type: 'bold'
   };
@@ -3408,12 +3409,13 @@
       <source>Rhythms of the Brain</source>
     </element-citation>
   */
-  class BookRef extends Reference {}
+  class BookRef extends Reference { }
   BookRef.schema = {
     type: 'book-ref',
     authors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="author">
     editors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="editor">
     translators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="translator">
+    compilers: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="compiler">
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <source>
     volume: substance.STRING, // <volume>
     edition: substance.STRING, // <editor>
@@ -3429,7 +3431,7 @@
     pmid: substance.STRING // <pub-id pub-id-type="pmid">
   };
 
-  class Break extends substance.InlineNode {}
+  class Break extends substance.InlineNode { }
   Break.schema = {
     type: 'break'
   };
@@ -3460,7 +3462,7 @@
       <chapter-title>Two rules of speciation</chapter-title>
     </element-citation>
   */
-  class ChapterRef extends Reference {}
+  class ChapterRef extends Reference { }
   ChapterRef.schema = {
     type: 'chapter-ref',
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <chapter-title>
@@ -3469,6 +3471,7 @@
     authors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="author">
     editors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="editor">
     translators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="translator">
+    compilers: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="compiler">
     edition: substance.STRING, // <edition>
     publisherLoc: substance.STRING, // <publisher-loc>
     publisherName: substance.STRING, // <publisher-name>
@@ -3499,7 +3502,7 @@
       <article-title>ExploreDTI: a graphical toolbox for processing, analyzing, and visualizing diffusion MR data</article-title>
     </element-citation>
   */
-  class ConferencePaperRef extends Reference {}
+  class ConferencePaperRef extends Reference { }
   ConferencePaperRef.schema = {
     type: 'conference-paper-ref', // publication-type="confproc"
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <article-title>
@@ -3518,7 +3521,7 @@
   };
 
   class CustomAbstract extends Abstract {
-    static getTemplate () {
+    static getTemplate() {
       return {
         type: 'custom-abstract',
         content: [
@@ -3526,7 +3529,7 @@
         ]
       }
     }
-    render (options = {}) {
+    render(options = {}) {
       return this.title || ''
     }
   }
@@ -3538,13 +3541,13 @@
   };
 
   class MetadataField extends substance.DocumentNode {
-    static getTemplate () {
+    static getTemplate() {
       return {
         type: 'metadata-field'
       }
     }
 
-    isEmpty () {
+    isEmpty() {
       return this.length === 0
     }
   }
@@ -3573,7 +3576,7 @@
       <data-title>Affinity and Dose of TCR Engagement Yield Proportional Enhancer and Gene Activity in CD4+ T Cells</data-title>
     </element-citation>
   */
-  class DataPublicationRef extends Reference {}
+  class DataPublicationRef extends Reference { }
   DataPublicationRef.schema = {
     type: 'data-publication-ref', // publication-type="data"
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <data-title>
@@ -3589,7 +3592,7 @@
   };
 
   class ExternalLink extends Annotation {
-    shouldNotSplit () { return true }
+    shouldNotSplit() { return true }
   }
 
   ExternalLink.schema = {
@@ -3599,7 +3602,7 @@
   };
 
   class Figure extends substance.DocumentNode {
-    _initialize (...args) {
+    _initialize(...args) {
       super._initialize(...args);
 
       this.state = {
@@ -3607,7 +3610,7 @@
       };
     }
 
-    getCurrentPanelIndex () {
+    getCurrentPanelIndex() {
       let currentPanelIndex = 0;
       if (this.state) {
         currentPanelIndex = this.state.currentPanelIndex;
@@ -3615,13 +3618,13 @@
       return currentPanelIndex
     }
 
-    getPanels () {
+    getPanels() {
       return this.resolve('panels')
     }
 
     // NOTE: we are using structure of active panel as template for new one,
     // currently we are replicating the structure of metadata fields
-    getTemplateFromCurrentPanel () {
+    getTemplateFromCurrentPanel() {
       const currentIndex = this.getCurrentPanelIndex();
       const firstPanel = this.getPanels()[currentIndex];
       return {
@@ -3631,7 +3634,7 @@
       }
     }
 
-    static get refType () {
+    static get refType() {
       return 'fig'
     }
   }
@@ -3640,14 +3643,14 @@
     panels: substance.CHILDREN('figure-panel')
   };
 
-  class Graphic extends substance.DocumentNode {}
+  class Graphic extends substance.DocumentNode { }
   Graphic.schema = {
     type: 'graphic',
     href: substance.STRING,
     mimeType: substance.STRING
   };
 
-  class Xref extends substance.InlineNode {}
+  class Xref extends substance.InlineNode { }
   Xref.schema = {
     type: 'xref',
     label: substance.STRING,
@@ -3658,21 +3661,21 @@
     }
   };
 
-  class Paragraph extends substance.TextNode {}
+  class Paragraph extends substance.TextNode { }
   Paragraph.schema = {
     type: 'paragraph',
     content: substance.TEXT(RICH_TEXT_ANNOS.concat(EXTENDED_FORMATTING).concat(LINKS_AND_XREFS).concat(INLINE_NODES))
   };
 
   class SupplementaryFile extends substance.DocumentNode {
-    static getTemplate () {
+    static getTemplate() {
       return {
         type: 'supplementary-file',
         legend: [{ type: 'paragraph' }]
       }
     }
 
-    static get refType () {
+    static get refType() {
       return 'file'
     }
   }
@@ -3687,7 +3690,7 @@
   };
 
   class Permission extends substance.DocumentNode {
-    isEmpty () {
+    isEmpty() {
       return !(this.copyrightStatement || this.copyrightYear || this.copyrightHolder || this.license || this.licenseText)
     }
   }
@@ -3703,12 +3706,12 @@
   };
 
   class FigurePanel extends substance.DocumentNode {
-    getContent () {
+    getContent() {
       const doc = this.getDocument();
       return doc.get(this.content)
     }
 
-    static getTemplate () {
+    static getTemplate() {
       return {
         type: 'figure-panel',
         content: {
@@ -3737,7 +3740,7 @@
   };
 
   class Footnote extends substance.DocumentNode {
-    static getTemplate () {
+    static getTemplate() {
       return {
         type: 'footnote',
         content: [
@@ -3753,13 +3756,13 @@
   };
 
   class Funder extends substance.DocumentNode {
-    toString () {
+    toString() {
       return this.render().join('')
     }
 
-    render (options = {}) {
+    render(options = {}) {
       let { awardId, institution } = this;
-      let result = [ institution ];
+      let result = [institution];
       if (!options.short) {
         if (awardId) {
           result.push(', ', awardId);
@@ -3776,13 +3779,13 @@
   };
 
   class Group extends substance.DocumentNode {
-    toString () {
+    toString() {
       return this.render().join('')
     }
 
-    render (options = {}) {
+    render(options = {}) {
       let { name } = this;
-      return [ name ]
+      return [name]
     }
   }
   Group.schema = {
@@ -3799,27 +3802,27 @@
   const MAX_LEVEL = 3;
 
   class Heading extends substance.TextNode {
-    get canIndent () { return true }
+    get canIndent() { return true }
 
-    indent () {
+    indent() {
       let level = this.level;
       if (level < MAX_LEVEL) {
         this.level = this.level + 1;
       }
     }
 
-    get canDedent () { return true }
+    get canDedent() { return true }
 
-    dedent () {
+    dedent() {
       let level = this.level;
       if (level > MIN_LEVEL) {
         this.level = this.level - 1;
       }
     }
 
-    static get MIN_LEVEL () { return MIN_LEVEL }
+    static get MIN_LEVEL() { return MIN_LEVEL }
 
-    static get MAX_LEVEL () { return MAX_LEVEL }
+    static get MAX_LEVEL() { return MAX_LEVEL }
   }
 
   Heading.schema = {
@@ -3828,20 +3831,20 @@
     content: substance.TEXT(RICH_TEXT_ANNOS.concat(EXTENDED_FORMATTING).concat(LINKS_AND_XREFS).concat(INLINE_NODES).concat(['break']))
   };
 
-  class InlineFormula extends substance.InlineNode {}
+  class InlineFormula extends substance.InlineNode { }
   InlineFormula.schema = {
     type: 'inline-formula',
     content: substance.STRING
   };
 
-  class InlineGraphic extends substance.InlineNode {}
+  class InlineGraphic extends substance.InlineNode { }
   InlineGraphic.schema = {
     type: 'inline-graphic',
     mimeType: substance.STRING,
     href: substance.STRING
   };
 
-  class Italic extends Annotation {}
+  class Italic extends Annotation { }
   Italic.schema = {
     type: 'italic'
   };
@@ -3866,12 +3869,13 @@
       <article-title>PIP<sub id="sub-1">2</sub> and PIP as determinants ...</article-title>
     </element-citation>
   */
-  class JournalArticleRef extends Reference {}
+  class JournalArticleRef extends Reference { }
   JournalArticleRef.schema = {
     type: 'journal-article-ref', // publication-type="journal"
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <article-title>
     authors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="author">
     editors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="editor">
+    compilers: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="compiler">
     containerTitle: substance.STRING, // <source>: label this 'Journal' or 'Publication' as in Zotero?
     volume: substance.STRING, // <volume>
     issue: substance.STRING, // <issue>
@@ -3892,9 +3896,9 @@
     //   return this.render().join('')
     // }
 
-    render (options = {}) {
+    render(options = {}) {
       let { category, name } = this;
-      let result = [ name ];
+      let result = [name];
       if (!options.short) {
         if (category) {
           result.push(', ', category);
@@ -3911,49 +3915,49 @@
   };
 
   class List extends substance.ListMixin(substance.DocumentNode) {
-    createListItem (text) {
+    createListItem(text) {
       let item = this.getDocument().create({ type: 'list-item', content: text, level: 1 });
       return item
     }
 
-    getItems () {
+    getItems() {
       return substance.documentHelpers.getNodesForIds(this.getDocument(), this.items)
     }
 
-    getItemsPath () {
+    getItemsPath() {
       return [this.id, 'items']
     }
 
-    getItemAt (idx) {
+    getItemAt(idx) {
       let doc = this.getDocument();
       return doc.get(this.items[idx])
     }
 
-    getItemPosition (item) {
+    getItemPosition(item) {
       return this.items.indexOf(item.id)
     }
 
-    insertItemAt (pos, item) {
+    insertItemAt(pos, item) {
       substance.documentHelpers.insertAt(this.getDocument(), this.getItemsPath(), pos, item.id);
     }
 
-    removeItemAt (pos) {
+    removeItemAt(pos) {
       substance.documentHelpers.removeAt(this.getDocument(), this.getItemsPath(), pos);
     }
 
-    getLength () {
+    getLength() {
       return this.items.length
     }
 
-    getListTypeString () {
+    getListTypeString() {
       return this.listType
     }
 
-    setListTypeString (listTypeStr) {
+    setListTypeString(listTypeStr) {
       this.listType = listTypeStr;
     }
 
-    _itemsChanged () {
+    _itemsChanged() {
       // HACK: using a pseudo-change triggered by items when e.g. level changes
       // TODO: find a better way for this.
       this.getDocument().set([this.id, '_itemsChanged'], true);
@@ -3970,45 +3974,45 @@
   const MAX_LEVEL$1 = 3;
 
   class ListItem extends substance.TextNodeMixin(substance.DocumentNode) {
-    getLevel () {
+    getLevel() {
       return this.level
     }
 
-    setLevel (newLevel) {
+    setLevel(newLevel) {
       let doc = this.getDocument();
       doc.set([this.id, 'level'], newLevel);
     }
 
-    getPath () {
+    getPath() {
       return [this.id, 'content']
     }
 
-    get canIndent () { return true }
+    get canIndent() { return true }
 
-    indent () {
+    indent() {
       let level = this.level;
       if (level < MAX_LEVEL$1) {
         this._changeLevel(1);
       }
     }
 
-    get canDedent () { return true }
+    get canDedent() { return true }
 
-    dedent () {
+    dedent() {
       let level = this.level;
       if (level > MIN_LEVEL$1) {
         this._changeLevel(-1);
       }
     }
 
-    _changeLevel (delta) {
+    _changeLevel(delta) {
       this.setLevel(this.level + delta);
       // HACK: triggering parent explicitly
       // TODO: find a better solution
       this.getParent()._itemsChanged();
     }
 
-    static isListItem () {
+    static isListItem() {
       return true
     }
   }
@@ -4035,7 +4039,7 @@
       <lpage>38</lpage>
     </element-citation>
   */
-  class MagazineArticleRef extends Reference {}
+  class MagazineArticleRef extends Reference { }
   MagazineArticleRef.schema = {
     type: 'magazine-article-ref',
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <article-title>
@@ -4051,7 +4055,7 @@
     doi: substance.STRING // <pub-id pub-id-type="doi">
   };
 
-  class Metadata extends substance.DocumentNode {}
+  class Metadata extends substance.DocumentNode { }
   Metadata.schema = {
     type: 'metadata',
     articleType: substance.STRING,
@@ -4078,7 +4082,7 @@
     permission: substance.CHILD('permission')
   };
 
-  class Monoscript extends Annotation {}
+  class Monoscript extends Annotation { }
   Monoscript.schema = {
     type: 'monospace'
   };
@@ -4101,7 +4105,7 @@
       <article-title>What if superheroes aren’t really the good guys?</article-title>
     </element-citation>
   */
-  class NewspaperArticleRef extends Reference {}
+  class NewspaperArticleRef extends Reference { }
   NewspaperArticleRef.schema = {
     type: 'newspaper-article-ref', // publication-type="newspaper"
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <article-title>
@@ -4119,7 +4123,7 @@
     partTitle: substance.STRING // <part-title>
   };
 
-  class Overline extends Annotation {}
+  class Overline extends Annotation { }
   Overline.schema = {
     type: 'overline'
   };
@@ -4140,7 +4144,7 @@
       <article-title>IRE-1alpha inhibitors</article-title>
     </element-citation>
   */
-  class PatentRef extends Reference {}
+  class PatentRef extends Reference { }
   PatentRef.schema = {
     type: 'patent-ref', // publication-type="patent"
     inventors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="inventor">
@@ -4167,7 +4171,7 @@
     //   return this.render().join('')
     // }
 
-    render (options = {}) {
+    render(options = {}) {
       let { prefix, suffix, givenNames, surname } = this;
       if (options.short) {
         givenNames = extractInitials(givenNames);
@@ -4205,7 +4209,7 @@
     deceased: substance.BOOLEAN
   };
 
-  class Preformat extends substance.TextNode {}
+  class Preformat extends substance.TextNode { }
   Preformat.schema = {
     type: 'preformat',
     content: substance.STRING,
@@ -4219,7 +4223,7 @@
     //   return this.render().join('')
     // }
 
-    render (options = {}) {
+    render(options = {}) {
       let { givenNames, name } = this;
 
       let result = [
@@ -4265,7 +4269,7 @@
       <source>Liberia Malaria Indicator Survey 2011</source>
     </element-citation>
   */
-  class ReportRef extends Reference {}
+  class ReportRef extends Reference { }
   ReportRef.schema = {
     type: 'report-ref', // publication-type="report"
     authors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="author">
@@ -4281,7 +4285,7 @@
     doi: substance.STRING // <pub-id pub-id-type="doi">
   };
 
-  class SmallCaps extends Annotation {}
+  class SmallCaps extends Annotation { }
   SmallCaps.schema = {
     type: 'small-caps'
   };
@@ -4307,7 +4311,7 @@
       <source>pyhector</source>
     </element-citation>
   */
-  class SoftwareRef extends Reference {}
+  class SoftwareRef extends Reference { }
   SoftwareRef.schema = {
     type: 'software-ref', // publication-type="software"
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <source>
@@ -4321,7 +4325,7 @@
     doi: substance.STRING // <pub-id pub-id-type="doi">
   };
 
-  class StrikeThrough extends Annotation {}
+  class StrikeThrough extends Annotation { }
   StrikeThrough.schema = {
     type: 'strike-through'
   };
@@ -4332,9 +4336,9 @@
     //   return this.render().join('')
     // }
 
-    render (options = {}) {
+    render(options = {}) {
       let { category, name } = this;
-      let result = [ name ];
+      let result = [name];
       if (!options.short) {
         if (category) {
           result.push(', ', category);
@@ -4349,29 +4353,29 @@
     category: substance.STRING
   };
 
-  class Subscript extends Annotation {}
+  class Subscript extends Annotation { }
   Subscript.schema = {
     type: 'subscript'
   };
 
-  class Superscript extends Annotation {}
+  class Superscript extends Annotation { }
   Superscript.schema = {
     type: 'superscript'
   };
 
   class TableCell extends substance.TextNode {
-    constructor (...args) {
+    constructor(...args) {
       super(...args);
 
       this.rowIdx = -1;
       this.colIdx = -1;
     }
 
-    isShadowed () {
+    isShadowed() {
       return this.shadowed
     }
 
-    getMasterCell () {
+    getMasterCell() {
       return this.masterCell
     }
   }
@@ -4387,19 +4391,19 @@
   class TableFigure extends FigurePanel {
     // HACK: we need a place to store the tableFootnoteManager
     // in a controlled fashion
-    getFootnoteManager () {
+    getFootnoteManager() {
       return this._tableFootnoteManager
     }
 
-    setFootnoteManager (footnoteManager) {
+    setFootnoteManager(footnoteManager) {
       this._tableFootnoteManager = footnoteManager;
     }
 
-    hasFootnotes () {
+    hasFootnotes() {
       return this.footnotes && this.footnotes.length > 0
     }
 
-    static getTemplate (options = {}) {
+    static getTemplate(options = {}) {
       return {
         type: 'table-figure',
         content: Table.getTemplate(options),
@@ -4415,7 +4419,7 @@
   };
 
   class TableRow extends substance.DocumentNode {
-    getCells () {
+    getCells() {
       return this.resolve('cells')
     }
   }
@@ -4438,7 +4442,7 @@
       <article-title>PhD thesis: Submicroscopic <italic id="italic-2">Plasmodium falciparum</italic> gametocytaemia and the contribution to malaria transmission</article-title>
     </element-citation>
   */
-  class ThesisRef extends Reference {}
+  class ThesisRef extends Reference { }
   ThesisRef.schema = {
     type: 'thesis-ref', // publication-type="thesis"
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <article-title>
@@ -4451,18 +4455,18 @@
     doi: substance.STRING // <pub-id pub-id-type="doi">
   };
 
-  class Underline extends Annotation {}
+  class Underline extends Annotation { }
   Underline.schema = {
     type: 'underline'
   };
 
-  class UnsupportedInlineNode extends substance.InlineNode {}
+  class UnsupportedInlineNode extends substance.InlineNode { }
   UnsupportedInlineNode.schema = {
     type: 'unsupported-inline-node',
     data: 'string'
   };
 
-  class UnsupportedNode extends substance.DocumentNode {}
+  class UnsupportedNode extends substance.DocumentNode { }
   UnsupportedNode.schema = {
     type: 'unsupported-node',
     data: substance.STRING
@@ -4485,7 +4489,7 @@
       <article-title>The Imprinter of All Maladies</article-title>
     </element-citation>
   */
-  class WebpageRef extends Reference {}
+  class WebpageRef extends Reference { }
   WebpageRef.schema = {
     type: 'webpage-ref', // publication-type="webpage"
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <article-title>
@@ -4500,16 +4504,16 @@
   };
 
   class TableEditingAPI {
-    constructor (editorSession) {
+    constructor(editorSession) {
       this.editorSession = editorSession;
     }
 
-    isTableSelected () {
+    isTableSelected() {
       let sel = this._getSelection();
       return (sel && !sel.isNull() && sel.customType === 'table')
     }
 
-    deleteSelection () {
+    deleteSelection() {
       if (!this.isTableSelected()) throw new Error('Table selection required')
       let selData = this._getSelectionData();
       let { tableId, startRow, endRow, startCol, endCol } = selData;
@@ -4519,7 +4523,7 @@
       }, { action: 'deleteSelection' });
     }
 
-    copySelection () {
+    copySelection() {
       if (!this.isTableSelected()) throw new Error('Table selection required')
 
       // create a snippet with a table containing only the selected range
@@ -4544,13 +4548,13 @@
       return snippet
     }
 
-    cut () {
+    cut() {
       let snippet = this.copySelection();
       this.deleteSelection();
       return snippet
     }
 
-    paste (content, options) {
+    paste(content, options) {
       if (!this.isTableSelected()) throw new Error('Table selection required')
 
       // TODO: implement paste for tables
@@ -4561,7 +4565,7 @@
       return this._pasteTable(first)
     }
 
-    _pasteTable (copy) {
+    _pasteTable(copy) {
       // TODO: extend dimension if necessary
       // and the assign cell attributes and content
       // ATTENTION: make sure that col/rowspans do not extend the table dims
@@ -4593,7 +4597,7 @@
       return true
     }
 
-    insertRows (mode, count) {
+    insertRows(mode, count) {
       if (!this.isTableSelected()) return
 
       let selData = this._getSelectionData();
@@ -4604,7 +4608,7 @@
       }, { action: 'insertRows', pos, count });
     }
 
-    insertCols (mode, count) {
+    insertCols(mode, count) {
       if (!this.isTableSelected()) return
       let selData = this._getSelectionData();
       let tableId = selData.tableId;
@@ -4614,7 +4618,7 @@
       }, { action: 'insertCols', pos, count });
     }
 
-    deleteRows () {
+    deleteRows() {
       if (!this.isTableSelected()) return
       let selData = this._getSelectionData();
       let tableId = selData.tableId;
@@ -4626,7 +4630,7 @@
       }, { action: 'deleteRows', pos, count });
     }
 
-    deleteCols () {
+    deleteCols() {
       if (!this.isTableSelected()) return
       let selData = this._getSelectionData();
       let tableId = selData.tableId;
@@ -4638,7 +4642,7 @@
       }, { action: 'deleteCols', pos, count });
     }
 
-    merge () {
+    merge() {
       if (!this.isTableSelected()) return
       let selData = this._getSelectionData();
       // TODO: make sure that the selection allows to do that
@@ -4677,7 +4681,7 @@
       }
     }
 
-    unmerge () {
+    unmerge() {
       if (!this.isTableSelected()) return
       let selData = this._getSelectionData();
       // TODO: make sure that the selection allows to do that
@@ -4724,7 +4728,7 @@
       }
     }
 
-    toggleHeading (cellIds) {
+    toggleHeading(cellIds) {
       if (cellIds && cellIds.length > 0) {
         this.editorSession.transaction(tx => {
           for (let id of cellIds) {
@@ -4735,7 +4739,7 @@
       }
     }
 
-    insertText (newVal) {
+    insertText(newVal) {
       if (!this.isTableSelected()) return
       let selData = this._getSelectionData();
       let cellId = selData.anchorCell.id;
@@ -4752,21 +4756,21 @@
       }, { action: 'insertText' });
     }
 
-    insertSoftBreak () {
+    insertSoftBreak() {
       this.editorSession.transaction(tx => {
         tx.insertText('\n');
       }, { action: 'soft-break' });
     }
 
-    _getDocument () {
+    _getDocument() {
       return this.editorSession.getDocument()
     }
 
-    _getSelection () {
+    _getSelection() {
       return this.editorSession.getSelection()
     }
 
-    _getSelectionData () {
+    _getSelectionData() {
       let doc = this._getDocument();
       let sel = this._getSelection();
       if (sel && sel.customType === 'table') {
@@ -4792,13 +4796,13 @@
       }
     }
 
-    _getTable (doc, sel) {
+    _getTable(doc, sel) {
       if (!sel || sel.isNull() || sel.customType === 'table') {
         return null
       }
     }
 
-    _createRowsAt (table, rowIdx, n) {
+    _createRowsAt(table, rowIdx, n) {
       let doc = table.getDocument();
       let M = table.getColumnCount();
       const path = [table.id, 'rows'];
@@ -4808,7 +4812,7 @@
       }
     }
 
-    _deleteRows (table, startRow, endRow) {
+    _deleteRows(table, startRow, endRow) {
       let doc = table.getDocument();
       const path = [table.id, 'rows'];
       for (let rowIdx = endRow; rowIdx >= startRow; rowIdx--) {
@@ -4817,7 +4821,7 @@
       }
     }
 
-    _deleteCols (table, startCol, endCol) {
+    _deleteCols(table, startCol, endCol) {
       let doc = table.getDocument();
       let N = table.getRowCount();
       for (let rowIdx = N - 1; rowIdx >= 0; rowIdx--) {
@@ -4830,7 +4834,7 @@
       }
     }
 
-    _createColumnsAt (table, colIdx, n) {
+    _createColumnsAt(table, colIdx, n) {
       let doc = table.getDocument();
       let rows = table.resolve('rows');
       for (let row of rows) {
@@ -4842,7 +4846,7 @@
       }
     }
 
-    _clearValues (table, startRow, startCol, endRow, endCol) {
+    _clearValues(table, startRow, startCol, endRow, endCol) {
       let doc = table.getDocument();
       for (let rowIdx = startRow; rowIdx <= endRow; rowIdx++) {
         for (let colIdx = startCol; colIdx <= endCol; colIdx++) {
@@ -4852,7 +4856,7 @@
       }
     }
 
-    _ensureSize (tableId, nrows, ncols) {
+    _ensureSize(tableId, nrows, ncols) {
       let table = this._getDocument().get(tableId);
       let [_nrows, _ncols] = table.getDimensions();
       if (_ncols < ncols) {
@@ -4872,7 +4876,7 @@
     }
   }
 
-  function importFigures (tx, sel, files, paths) {
+  function importFigures(tx, sel, files, paths) {
     if (files.length === 0) return
 
     let containerPath = sel.containerPath;
@@ -4884,7 +4888,7 @@
       panelTemplate.content.mimeType = mimeType;
       let figure = substance.documentHelpers.createNodeFromJson(tx, {
         type: 'figure',
-        panels: [ panelTemplate ]
+        panels: [panelTemplate]
       });
       // Note: this is necessary because tx.insertBlockNode()
       // selects the inserted node
@@ -4899,7 +4903,7 @@
     substance.selectionHelpers.selectNode(tx, substance.last(figures).id, containerPath);
   }
 
-  function getLabel (node) {
+  function getLabel(node) {
     if (node._isModel) {
       node = node._node;
     }
@@ -4910,7 +4914,7 @@
     return label
   }
 
-  function getPos (node) {
+  function getPos(node) {
     let pos;
     if (node && node.state) {
       pos = node.state.pos;
@@ -4921,7 +4925,7 @@
     return pos
   }
 
-  function findParentByType (node, type) {
+  function findParentByType(node, type) {
     let parent = node.getParent();
     while (parent) {
       if (parent.isInstanceOf(type)) {
@@ -4931,7 +4935,7 @@
     }
   }
 
-  function ifNodeOrRelatedHasChanged (node, change, cb) {
+  function ifNodeOrRelatedHasChanged(node, change, cb) {
     let doc = node.getDocument();
     let id = node.id;
     let hasChanged = change.hasUpdated(id);
@@ -4950,7 +4954,7 @@
     if (hasChanged) cb();
   }
 
-  function journalArticleRenderer ($$, entityId, entityDb, exporter) {
+  function journalArticleRenderer($$, entityId, entityDb, exporter) {
     let entity = entityDb.get(entityId);
     let fragments = [];
 
@@ -4975,6 +4979,16 @@
         ' ',
         _renderAuthors($$, entity.editors, entityDb),
         '.'
+      );
+    }
+    if (entity.compilers && entity.compilers.length > 0) {
+      let compilerLabel = entity.compilers.length > 1 ? 'comps' : 'comp';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.compilers, entityDb),
+        ' (',
+        compilerLabel,
+        ').'
       );
     }
     if (entity.containerTitle) {
@@ -5017,7 +5031,7 @@
     return fragments
   }
 
-  function bookRenderer ($$, entityId, entityDb, exporter) {
+  function bookRenderer($$, entityId, entityDb, exporter) {
     let entity = entityDb.get(entityId);
     let fragments = [];
 
@@ -5040,6 +5054,16 @@
         ' (',
         _renderAuthors($$, entity.translators, entityDb),
         ', trans).'
+      );
+    }
+    if (entity.compilers && entity.compilers.length) {
+      let compilerLabel = entity.compilers.length > 1 ? 'comps' : 'comp';
+      fragments = fragments.concat(
+        ' (',
+        _renderAuthors($$, entity.compilers, entityDb),
+        ', ',
+        compilerLabel,
+        ').'
       );
     }
     if (entity.title) {
@@ -5098,7 +5122,7 @@
     return fragments
   }
 
-  function chapterRenderer ($$, entityId, entityDb, exporter) {
+  function chapterRenderer($$, entityId, entityDb, exporter) {
     let entity = entityDb.get(entityId);
     let fragments = [];
 
@@ -5113,6 +5137,16 @@
         ' (',
         _renderAuthors($$, entity.translators, entityDb),
         ', trans).'
+      );
+    }
+    if (entity.compilers && entity.compilers.length) {
+      let compilerLabel = entity.compilers.length > 1 ? 'comps' : 'comp';
+      fragments = fragments.concat(
+        ' (',
+        _renderAuthors($$, entity.compilers, entityDb),
+        ', ',
+        compilerLabel,
+        ').'
       );
     }
     if (entity.title) {
@@ -5182,7 +5216,7 @@
     return fragments
   }
 
-  function patentRenderer ($$, entityId, entityDb, exporter) {
+  function patentRenderer($$, entityId, entityDb, exporter) {
     let entity = entityDb.get(entityId);
     let fragments = [];
 
@@ -5216,7 +5250,7 @@
     return fragments
   }
 
-  function articleRenderer ($$, entityId, entityDb, exporter) {
+  function articleRenderer($$, entityId, entityDb, exporter) {
     let entity = entityDb.get(entityId);
     let fragments = [];
 
@@ -5272,7 +5306,7 @@
     return fragments
   }
 
-  function dataPublicationRenderer ($$, entityId, entityDb, exporter) {
+  function dataPublicationRenderer($$, entityId, entityDb, exporter) {
     let entity = entityDb.get(entityId);
     let fragments = [];
 
@@ -5322,7 +5356,7 @@
     return fragments
   }
 
-  function magazineArticleRenderer ($$, entityId, entityDb, exporter) {
+  function magazineArticleRenderer($$, entityId, entityDb, exporter) {
     let entity = entityDb.get(entityId);
     let fragments = [];
 
@@ -5372,7 +5406,7 @@
     return fragments
   }
 
-  function newspaperArticleRenderer ($$, entityId, entityDb, exporter) {
+  function newspaperArticleRenderer($$, entityId, entityDb, exporter) {
     let entity = entityDb.get(entityId);
     let fragments = [];
 
@@ -5431,7 +5465,7 @@
     return fragments
   }
 
-  function reportRenderer ($$, entityId, entityDb, exporter) {
+  function reportRenderer($$, entityId, entityDb, exporter) {
     let entity = entityDb.get(entityId);
     let fragments = [];
     if (entity.authors.length > 0) {
@@ -5479,7 +5513,7 @@
     return fragments
   }
 
-  function conferencePaperRenderer ($$, entityId, entityDb, exporter) {
+  function conferencePaperRenderer($$, entityId, entityDb, exporter) {
     let entity = entityDb.get(entityId);
     let fragments = [];
 
@@ -5532,7 +5566,7 @@
     return fragments
   }
 
-  function softwareRenderer ($$, entityId, entityDb, exporter) {
+  function softwareRenderer($$, entityId, entityDb, exporter) {
     let entity = entityDb.get(entityId);
     let fragments = [];
 
@@ -5572,7 +5606,7 @@
     return fragments
   }
 
-  function thesisRenderer ($$, entityId, entityDb, exporter) {
+  function thesisRenderer($$, entityId, entityDb, exporter) {
     let entity = entityDb.get(entityId);
     let fragments = [];
 
@@ -5603,7 +5637,7 @@
     return fragments
   }
 
-  function webpageRenderer ($$, entityId, entityDb, exporter) {
+  function webpageRenderer($$, entityId, entityDb, exporter) {
     let entity = entityDb.get(entityId);
     let fragments = [];
 
@@ -5645,7 +5679,7 @@
     return fragments
   }
 
-  function entityRenderer ($$, entityId, entityDb, options = {}) {
+  function entityRenderer($$, entityId, entityDb, options = {}) {
     let entity = entityDb.get(entityId);
     return entity.render(options)
   }
@@ -5680,7 +5714,7 @@
   /*
     Helpers
   */
-  function _renderAuthors ($$, authors, entityDb) {
+  function _renderAuthors($$, authors, entityDb) {
     let fragments = [];
     authors.forEach((refContribId, i) => {
       fragments = fragments.concat(
@@ -5693,7 +5727,7 @@
     return fragments
   }
 
-  function _renderDate ($$, year, month, day, format) {
+  function _renderDate($$, year, month, day, format) {
     if (year) {
       if (month) {
         if (day) {
@@ -5707,7 +5741,7 @@
     }
   }
 
-  function _renderMonth (month, format) {
+  function _renderMonth(month, format) {
     let monthNames;
     if (format === 'long') {
       monthNames = [null, 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -5719,7 +5753,7 @@
     }
   }
 
-  function _renderDOI ($$, doi) {
+  function _renderDOI($$, doi) {
     return $$('a').attr({
       href: `https://doi.org/${doi}`,
       target: '_blank'
@@ -5729,7 +5763,7 @@
     )
   }
 
-  function _renderLocation ($$, fpage, lpage, pageRange, elocationId) {
+  function _renderLocation($$, fpage, lpage, pageRange, elocationId) {
     if (pageRange) {
       // Give up to three page ranges, then use passim for more, see
       // https://www.ncbi.nlm.nih.gov/books/NBK7282/box/A33679/?report=objectonly
@@ -5759,7 +5793,7 @@
     }
   }
 
-  function _renderPublisherPlace ($$, place, publisher) {
+  function _renderPublisherPlace($$, place, publisher) {
     if (place && publisher) {
       return ' ' + place + ': ' + publisher + '; '
     } else if (place) {
@@ -5771,7 +5805,7 @@
     }
   }
 
-  function _delegate (fn) {
+  function _delegate(fn) {
     return function (entityId, db, exporter, options) {
       let el = _createElement();
       let $$ = el.createElement.bind(el);
@@ -5781,14 +5815,14 @@
     }
   }
 
-  function _createElement () {
+  function _createElement() {
     return substance.DefaultDOMElement.parseSnippet('<div>', 'html')
   }
 
   // TODO: rethink this.
   // The fact that it needs an exporter makes it not very useful.
   // In general I think that these renderers should not depend on an HTML exporter
-  function renderEntity (entity, exporter, options = {}) {
+  function renderEntity(entity, exporter, options = {}) {
     if (entity) {
       const type = entity.type;
       let renderer = entityRenderers[type];
@@ -5824,16 +5858,16 @@
     'table-fn': ['footnote']
   });
 
-  function getXrefTargets (xref) {
+  function getXrefTargets(xref) {
     return xref.refTargets
   }
 
-  function getXrefLabel (xref) {
+  function getXrefLabel(xref) {
     return getLabel(xref)
   }
 
   class AbstractCitationManager {
-    constructor (editorSession, refType, targetTypes, labelGenerator) {
+    constructor(editorSession, refType, targetTypes, labelGenerator) {
       this.editorSession = editorSession;
       this.refType = refType;
       this.targetTypes = new Set(targetTypes);
@@ -5842,26 +5876,26 @@
       editorSession.on('change', this._onDocumentChange, this);
     }
 
-    dispose () {
+    dispose() {
       this.editorSession.off(this);
     }
 
-    hasCitables () {
+    hasCitables() {
       return this.getCitables().length > 0
     }
 
-    getCitables () {
+    getCitables() {
       return []
     }
 
-    getSortedCitables () {
+    getSortedCitables() {
       return this.getCitables().sort((a, b) => {
         return getPos(a) - getPos(b)
       })
     }
 
     // TODO: how could this be generalized so that it is less dependent on the internal model?
-    _onDocumentChange (change) {
+    _onDocumentChange(change) {
       // HACK: do not react on node state updates
       if (change.info.action === 'node-state-update') return
 
@@ -5873,23 +5907,23 @@
         // 2. citable has been add or removed
         if (this._detectAddRemoveXref(op) || this._detectAddRemoveCitable(op, change)) {
           return this._updateLabels()
-        // 3. xref targets have been changed
-        // 4. refType of an xref has been changed (TODO: do we really need this?)
+          // 3. xref targets have been changed
+          // 4. refType of an xref has been changed (TODO: do we really need this?)
         } else if (this._detectChangeRefTarget(op) || this._detectChangeRefType(op)) {
           return this._updateLabels()
         }
       }
     }
 
-    _detectAddRemoveXref (op) {
+    _detectAddRemoveXref(op) {
       return (op.val && op.val.type === 'xref' && op.val.refType === this.refType)
     }
 
-    _detectAddRemoveCitable (op, change) {
+    _detectAddRemoveCitable(op, change) {
       return (op.val && this.targetTypes.has(op.val.type))
     }
 
-    _detectChangeRefTarget (op) {
+    _detectChangeRefTarget(op) {
       if (op.path[1] === 'refTargets') {
         let doc = this._getDocument();
         let node = doc.get(op.path[0]);
@@ -5899,7 +5933,7 @@
       }
     }
 
-    _detectChangeRefType (op) {
+    _detectChangeRefType(op) {
       return (op.path[1] === 'refType' && (op.val === this.refType || op.original === this.refType))
     }
 
@@ -5919,7 +5953,7 @@
 
       @param {Array<Object>} a list of citation entries.
     */
-    _updateLabels (silent) {
+    _updateLabels(silent) {
       let xrefs = this._getXrefs();
       let refs = this.getCitables();
       let refsById = refs.reduce((m, ref) => {
@@ -5983,18 +6017,18 @@
       this.editorSession.updateNodeStates(stateUpdates, { silent });
     }
 
-    _getDocument () {
+    _getDocument() {
       return this.editorSession.getDocument()
     }
 
-    _getXrefs () {
+    _getXrefs() {
       // TODO: is it really a good idea to tie this implementation to 'article' here?
       const article = this._getDocument().get('article');
       let refs = article.findAll(`xref[refType='${this.refType}']`);
       return refs
     }
 
-    _getLabelGenerator () {
+    _getLabelGenerator() {
       return this.labelGenerator
     }
   }
@@ -6006,27 +6040,27 @@
     to the occurence in the content.
   */
   class CitableContentManager extends AbstractCitationManager {
-    hasCitables () {
+    hasCitables() {
       return Boolean(this._getContentElement().find(this._getItemSelector()))
     }
 
-    getCitables () {
+    getCitables() {
       return this._getContentElement().findAll(this._getItemSelector())
     }
 
-    getSortedCitables () {
+    getSortedCitables() {
       return this.getCitables()
     }
 
-    _getItemSelector () {
+    _getItemSelector() {
       return XREF_TARGET_TYPES[this.refType].join(',')
     }
 
-    _getXrefs () {
+    _getXrefs() {
       return this._getDocument().findAll(`xref[refType='${this.refType}']`)
     }
 
-    _detectAddRemoveCitable (op, change) {
+    _detectAddRemoveCitable(op, change) {
       if (op.isUpdate()) {
         const contentPath = this._getContentPath();
         if (substance.isArrayEqual(op.path, contentPath)) {
@@ -6039,15 +6073,15 @@
       return false
     }
 
-    _getContentPath () {
+    _getContentPath() {
       return this._getContentElement().getContentPath()
     }
 
-    _getContentElement () {
+    _getContentElement() {
       return this._getDocument().get('body')
     }
 
-    _updateLabels (silent) {
+    _updateLabels(silent) {
       let targetUpdates = this._computeTargetUpdates();
       let xrefUpdates = this._computeXrefUpdates(targetUpdates);
       let stateUpdates = substance.map(targetUpdates, this._stateUpdate).concat(substance.map(xrefUpdates, this._stateUpdate));
@@ -6055,11 +6089,11 @@
       this.editorSession.updateNodeStates(stateUpdates, { silent });
     }
 
-    _stateUpdate (record) {
+    _stateUpdate(record) {
       return [record.id, { label: record.label }]
     }
 
-    _computeTargetUpdates () {
+    _computeTargetUpdates() {
       let resources = this.getCitables();
       let pos = 1;
       let targetUpdates = {};
@@ -6073,7 +6107,7 @@
       return targetUpdates
     }
 
-    _computeXrefUpdates (targetUpdates) {
+    _computeXrefUpdates(targetUpdates) {
       const targetIds = new Set(Object.keys(targetUpdates));
       let xrefs = this._getXrefs();
       let xrefUpdates = {};
@@ -6214,7 +6248,7 @@
 </article>`;
 
   class FigureLabelGenerator {
-    constructor (config = {}) {
+    constructor(config = {}) {
       /*
         - name: type name as in 'Figure'
         - plural: type name in plural as in 'Figures'
@@ -6231,7 +6265,7 @@
       }, config);
     }
 
-    getLabel (...defs) {
+    getLabel(...defs) {
       if (defs.length === 0) return this.config.invalid
       // Note: normalizing args so that every def is a tuple
       defs = defs.map(d => {
@@ -6242,12 +6276,12 @@
       return this.getCombinedLabel(defs)
     }
 
-    getSingleLabel (def) {
+    getSingleLabel(def) {
       if (!def) return this.config.invalid
       return this._replaceAll(this.config.singular, this._getSingleCounter(def))
     }
 
-    getCombinedLabel (defs) {
+    getCombinedLabel(defs) {
       if (defs.length < 2) return this.getSingleLabel(defs[0])
 
       // sort the records
@@ -6305,7 +6339,7 @@
       return this._replaceAll(this.config.plural, combined)
     }
 
-    _getSingleCounter (def) {
+    _getSingleCounter(def) {
       if (def.length === 1) {
         return String(def[0].pos)
       } else {
@@ -6315,12 +6349,12 @@
       }
     }
 
-    _getPanelLabel (def) {
+    _getPanelLabel(def) {
       let panelCounter = def[1].pos;
       return `${LATIN_LETTERS_UPPER_CASE[panelCounter - 1]}`
     }
 
-    _getGroupCounter (first, last) {
+    _getGroupCounter(first, last) {
       // ATTENTION: assuming that first and last have the same level (according to our implementation)
       if (first.length === 1) {
         return `${this._getSingleCounter(first)}${this.config.to}${this._getSingleCounter(last)}`
@@ -6329,27 +6363,27 @@
       }
     }
 
-    _replaceAll (t, $) {
+    _replaceAll(t, $) {
       return t.slice(0).replace(/[$]/g, $)
     }
   }
 
   class FigureManager extends CitableContentManager {
-    constructor (editorSession, config) {
+    constructor(editorSession, config) {
       super(editorSession, 'fig', ['figure-panel'], new FigureLabelGenerator(config));
       this._updateLabels('initial');
     }
 
-    _detectAddRemoveCitable (op, change) {
+    _detectAddRemoveCitable(op, change) {
       // in addition to figure add/remove the labels are affected when panels are added/removed or reordered
       return super._detectAddRemoveCitable(op, change) || (op.val && op.val.type === 'figure-panel') || (op.path && op.path[1] === 'panels')
     }
 
-    _getItemSelector () {
+    _getItemSelector() {
       return 'figure-panel'
     }
 
-    _computeTargetUpdates () {
+    _computeTargetUpdates() {
       let doc = this._getDocument();
       let figures = this._getContentElement().findAll('figure');
       let records = {};
@@ -6376,7 +6410,7 @@
             records[id] = { id, pos, label };
             panelCounter++;
           }
-        // edge-case: figure-groups with just a single panel get a simple label
+          // edge-case: figure-groups with just a single panel get a simple label
         } else {
           let panel = panels[0];
           let id = panel.id;
@@ -6391,20 +6425,20 @@
   }
 
   class FootnoteManager extends AbstractCitationManager {
-    constructor (editorSession, labelGenerator) {
+    constructor(editorSession, labelGenerator) {
       super(editorSession, 'fn', ['footnote'], labelGenerator);
       // compute initial labels
       this._updateLabels('initial');
     }
 
-    getCitables () {
+    getCitables() {
       let doc = this._getDocument();
       return substance.documentHelpers.getNodesForPath(doc, ['article', 'footnotes'])
     }
   }
 
   class FormulaManager extends CitableContentManager {
-    constructor (editorSession, labelGenerator) {
+    constructor(editorSession, labelGenerator) {
       super(editorSession, BlockFormula.refType, [BlockFormula.type], labelGenerator);
       this._updateLabels('initial');
     }
@@ -6429,7 +6463,7 @@
   const HYPHEN = '‒';
 
   class NumberedLabelGenerator {
-    constructor (config = {}) {
+    constructor(config = {}) {
       // for labels with a type name such as 'Figure 1'
       this.name = config.name;
       // for labels with type name, with multiple refs, such as 'Figures 1-3'
@@ -6449,13 +6483,13 @@
     }
 
     // TODO: consolidate label generator interface
-    getLabel (numbers) {
+    getLabel(numbers) {
       if (!numbers) return this.invalid
       if (!substance.isArray(numbers)) numbers = [numbers];
       return this.getCombinedLabel(numbers)
     }
 
-    getCombinedLabel (numbers) {
+    getCombinedLabel(numbers) {
       if (numbers.length === 0) return this.invalid
 
       const L = numbers.length;
@@ -6519,33 +6553,33 @@
   }
 
   class ReferenceManager extends AbstractCitationManager {
-    constructor (editorSession, config) {
+    constructor(editorSession, config) {
       super(editorSession, 'bibr', ['reference'], new NumberedLabelGenerator(config));
       // compute initial labels
       this._updateLabels('initial');
     }
 
-    getBibliography () {
+    getBibliography() {
       return this.getSortedCitables()
     }
 
-    hasCitables () {
+    hasCitables() {
       let refIds = this._getRefIds();
       return refIds.length > 0
     }
 
-    getCitables () {
+    getCitables() {
       return substance.documentHelpers.getNodesForIds(this._getDocument(), this._getRefIds())
     }
 
-    _getRefIds () {
+    _getRefIds() {
       let doc = this._getDocument();
       let article = doc.get('article');
       return article.references
     }
 
     // overriding because 'reference' is just an abstract parent type
-    _detectAddRemoveCitable (op, change) {
+    _detectAddRemoveCitable(op, change) {
       if (op.isCreate() || op.isDelete()) {
         // TODO: it would be nice to have real node instances in change
         // to inspect the class/prototype
@@ -6561,7 +6595,7 @@
   const UNDEFINED = '?';
 
   class TableFootnoteManager extends AbstractCitationManager {
-    constructor (editorSession, tableFigure) {
+    constructor(editorSession, tableFigure) {
       super(editorSession, 'table-fn', ['fn'], new SymbolSetLabelGenerator(SYMBOLS));
 
       this.tableFigure = tableFigure;
@@ -6569,15 +6603,15 @@
       this._updateLabels('silent');
     }
 
-    _getContentElement () {
+    _getContentElement() {
       return this.tableFigure
     }
 
-    hasCitables () {
+    hasCitables() {
       return (this.tableFigure.footnotes && this.tableFigure.footnotes.length > 0)
     }
 
-    getCitables () {
+    getCitables() {
       let doc = this._getDocument();
       let footnotes = this.tableFigure.footnotes;
       if (footnotes) {
@@ -6590,7 +6624,7 @@
       }
     }
 
-    _detectAddRemoveCitable (op, change) {
+    _detectAddRemoveCitable(op, change) {
       const contentPath = [this.tableFigure.id, 'footnotes'];
       if (substance.isArrayEqual(op.path, contentPath)) {
         const doc = this._getDocument();
@@ -6604,11 +6638,11 @@
   }
 
   class SymbolSetLabelGenerator {
-    constructor (symbols) {
+    constructor(symbols) {
       this.symbols = Array.from(symbols);
     }
 
-    getLabel (pos) {
+    getLabel(pos) {
       if (substance.isArray(pos)) {
         pos.sort((a, b) => a - b);
         return pos.map(p => this._getSymbolForPos(p)).join(', ')
@@ -6617,13 +6651,13 @@
       }
     }
 
-    _getSymbolForPos (pos) {
+    _getSymbolForPos(pos) {
       return this.symbols[pos - 1] || UNDEFINED
     }
   }
 
   class TableManager extends CitableContentManager {
-    constructor (editorSession, labelGenerator) {
+    constructor(editorSession, labelGenerator) {
       super(editorSession, 'table', ['table-figure'], labelGenerator);
 
       this._updateLabels('initial');
@@ -6635,14 +6669,14 @@
     // watching changes and creating a TableFootnoteManager whenever a TableFigure is created
     // We should find a better location, or think about a framework to register such managers in general
     // TableManager does actually not have anything to do with table footnotes.
-    _onDocumentChange (change) {
+    _onDocumentChange(change) {
       super._onDocumentChange(change);
       this._checkForNewTableFigures(change);
     }
 
     // EXPERIMENTAL:
     // ... managers should have hooks to do such stuff
-    _initializeTableFootnoteManagers () {
+    _initializeTableFootnoteManagers() {
       let doc = this._getDocument();
       let tableFigures = doc.getIndex('type').get('table-figure');
       substance.forEach(tableFigures, tableFigure => {
@@ -6650,7 +6684,7 @@
       });
     }
 
-    _checkForNewTableFigures (change) {
+    _checkForNewTableFigures(change) {
       let doc = this._getDocument();
       // whenever a table-figure is created we attach a TableFootnoteManager
       for (let op of change.ops) {
@@ -6665,24 +6699,24 @@
   }
 
   class SupplementaryManager extends CitableContentManager {
-    constructor (editorSession, labelGenerator) {
+    constructor(editorSession, labelGenerator) {
       super(editorSession, 'file', ['supplementary-file'], labelGenerator);
       this._updateLabels('initial');
     }
 
     // ATTENTION: for now we consider only supplementary files that are direct children of the body
     // TODO: we need to specify how this should be extended to supplementary files in figure panels
-    getCitables () {
+    getCitables() {
       return this._getContentElement().resolve('content').filter(child => child.type === 'supplementary-file')
     }
   }
 
   class Model {
-    constructor (api) {
+    constructor(api) {
       this._api = api;
     }
 
-    _getValueModel (propKey) {
+    _getValueModel(propKey) {
       return this._api.getValueModel(propKey)
     }
   }
@@ -6692,43 +6726,43 @@
    * about how to access certain parts of the document.
    */
   class ArticleModel extends Model {
-    getAbstract () {
+    getAbstract() {
       return this._getValueModel('article.abstract')
     }
 
-    getAuthors () {
+    getAuthors() {
       return this._getValueModel('metadata.authors')
     }
 
-    hasAuthors () {
+    hasAuthors() {
       return this.getAuthors().length > 0
     }
 
-    getBody () {
+    getBody() {
       return this._getValueModel('body.content')
     }
 
-    getFootnotes () {
+    getFootnotes() {
       return this._getValueModel('article.footnotes')
     }
 
-    hasFootnotes () {
+    hasFootnotes() {
       return this.getFootnotes().length > 0
     }
 
-    getReferences () {
+    getReferences() {
       return this._getValueModel('article.references')
     }
 
-    hasReferences () {
+    hasReferences() {
       return this.getReferences().length > 0
     }
 
-    getTitle () {
+    getTitle() {
       return this._getValueModel('article.title')
     }
 
-    getSubTitle () {
+    getSubTitle() {
       return this._getValueModel('article.subTitle')
     }
   }
@@ -6736,7 +6770,7 @@
   const DISALLOWED_MANIPULATION = 'Manipulation is not allowed.';
 
   class ArticleAPI {
-    constructor (editorSession, archive, config) {
+    constructor(editorSession, archive, config) {
       let doc = editorSession.getDocument();
 
       this.editorSession = editorSession;
@@ -6761,39 +6795,39 @@
       this._tableManager = new TableManager(editorSession, config.getValue('table-label-generator'));
     }
 
-    addAffiliation () {
+    addAffiliation() {
       this._addEntity(['metadata', 'affiliations'], Affiliation.type);
     }
 
-    addAuthor () {
+    addAuthor() {
       this._addEntity(['metadata', 'authors'], Person.type);
     }
 
-    addCustomAbstract () {
+    addCustomAbstract() {
       this._addEntity(['article', 'customAbstracts'], CustomAbstract.type, tx => substance.documentHelpers.createNodeFromJson(tx, CustomAbstract.getTemplate()));
     }
 
-    addEditor () {
+    addEditor() {
       this._addEntity(['metadata', 'editors'], Person.type);
     }
 
-    addFunder () {
+    addFunder() {
       this._addEntity(['metadata', 'funders'], Funder.type);
     }
 
-    addGroup () {
+    addGroup() {
       this._addEntity(['metadata', 'groups'], Group.type);
     }
 
-    addKeyword () {
+    addKeyword() {
       this._addEntity(['metadata', 'keywords'], Keyword.type);
     }
 
-    addSubject () {
+    addSubject() {
       this._addEntity(['metadata', 'subjects'], Subject.type);
     }
 
-    addFigurePanel (figureId, file) {
+    addFigurePanel(figureId, file) {
       const doc = this.getDocument();
       const figure = doc.get(figureId);
       if (!figure) throw new Error('Figure does not exist')
@@ -6815,7 +6849,7 @@
     }
 
     // TODO: it is not so common to add footnotes without an xref in the text
-    addFootnote (footnoteCollectionPath) {
+    addFootnote(footnoteCollectionPath) {
       let editorSession = this.getEditorSession();
       editorSession.transaction(tx => {
         let node = substance.documentHelpers.createNodeFromJson(tx, Footnote.getTemplate());
@@ -6831,11 +6865,11 @@
       });
     }
 
-    addReference (refData) {
+    addReference(refData) {
       this.addReferences([refData]);
     }
 
-    addReferences (refsData) {
+    addReferences(refsData) {
       let editorSession = this.getEditorSession();
       editorSession.transaction(tx => {
         let refNodes = refsData.map(refData => substance.documentHelpers.createNodeFromJson(tx, refData));
@@ -6849,7 +6883,7 @@
       });
     }
 
-    canCreateAnnotation (annoType) {
+    canCreateAnnotation(annoType) {
       let editorState = this.getEditorState();
       const sel = editorState.selection;
       const selectionState = editorState.selectionState;
@@ -6863,11 +6897,11 @@
       return false
     }
 
-    canInsertBlockFormula () {
+    canInsertBlockFormula() {
       return this.canInsertBlockNode(BlockFormula.type)
     }
 
-    canInsertBlockNode (nodeType) {
+    canInsertBlockNode(nodeType) {
       let editorState = this.getEditorState();
       let doc = editorState.document;
       let sel = editorState.selection;
@@ -6881,11 +6915,11 @@
       return false
     }
 
-    canInsertCrossReference () {
+    canInsertCrossReference() {
       return this.canInsertInlineNode(Xref.type, true)
     }
 
-    canInsertInlineGraphic () {
+    canInsertInlineGraphic() {
       return this.canInsertInlineNode(InlineGraphic.type)
     }
 
@@ -6895,7 +6929,7 @@
      * @param {string} type the type of the inline node
      * @param {boolean} collapsedOnly true if insertion is allowed only for collapsed selection
      */
-    canInsertInlineNode (type, collapsedOnly) {
+    canInsertInlineNode(type, collapsedOnly) {
       let editorState = this.getEditorState();
       const sel = editorState.selection;
       const selectionState = editorState.selectionState;
@@ -6909,14 +6943,14 @@
       return false
     }
 
-    canMoveEntityUp (nodeId) {
+    canMoveEntityUp(nodeId) {
       let node = this._getNode(nodeId);
       if (node && this._isCollectionItem(node) && !this._isManagedCollectionItem(node)) {
         return node.getPosition() > 0
       }
     }
 
-    canMoveEntityDown (nodeId) {
+    canMoveEntityDown(nodeId) {
       let node = this._getNode(nodeId);
       if (node && this._isCollectionItem(node) && !this._isManagedCollectionItem(node)) {
         let pos = node.getPosition();
@@ -6925,7 +6959,7 @@
       }
     }
 
-    canRemoveEntity (nodeId) {
+    canRemoveEntity(nodeId) {
       let node = this._getNode(nodeId);
       if (node) {
         return this._isCollectionItem(node)
@@ -6934,22 +6968,22 @@
       }
     }
 
-    copy () {
+    copy() {
       return this.getEditorSession().copy()
     }
 
-    cut () {
+    cut() {
       return this.getEditorSession().cut()
     }
 
-    dedent () {
+    dedent() {
       let editorSession = this.getEditorSession();
       editorSession.transaction(tx => {
         tx.dedent();
       });
     }
 
-    deleteSelection (options) {
+    deleteSelection(options) {
       const sel = this.getSelection();
       if (sel && !sel.isNull() && !sel.isCollapsed()) {
         this.editorSession.transaction(tx => {
@@ -6958,7 +6992,7 @@
       }
     }
 
-    focusEditor (path) {
+    focusEditor(path) {
       let editorSession = this.getEditorSession();
       let surface = editorSession.getSurfaceForProperty(path);
       if (surface) {
@@ -6966,27 +7000,27 @@
       }
     }
 
-    getEditorState () {
+    getEditorState() {
       return this.editorSession.getEditorState()
     }
 
-    getArticleModel () {
+    getArticleModel() {
       return this._articleModel
     }
 
-    getContext () {
+    getContext() {
       return this.editorSession.getContext()
     }
 
-    getDocument () {
+    getDocument() {
       return this._document
     }
 
-    getEditorSession () {
+    getEditorSession() {
       return this.editorSession
     }
 
-    getSelection () {
+    getSelection() {
       return this.editorSession.getSelection()
     }
 
@@ -6995,7 +7029,7 @@
      *
      * @param {string|array} propKey path of a property as string or array
      */
-    getValueModel (propKey) {
+    getValueModel(propKey) {
       if (substance.isArray(propKey)) {
         propKey = substance.getKeyForPath(propKey);
       }
@@ -7013,44 +7047,44 @@
     /**
      * Provides a sub-api for editing tables.
      */
-    getTableAPI () {
+    getTableAPI() {
       return this._tableApi
     }
 
-    indent () {
+    indent() {
       let editorSession = this.getEditorSession();
       editorSession.transaction(tx => {
         tx.indent();
       });
     }
 
-    insertBlockFormula () {
+    insertBlockFormula() {
       if (!this.canInsertBlockNode(BlockFormula.type)) throw new Error(DISALLOWED_MANIPULATION)
       return this._insertBlockNode(tx => {
         return tx.create({ type: BlockFormula.type })
       })
     }
 
-    insertBlockNode (nodeData) {
+    insertBlockNode(nodeData) {
       let nodeId = this._insertBlockNode(tx => {
         return substance.documentHelpers.createNodeFromJson(tx, nodeData)
       });
       return this.getDocument().get(nodeId)
     }
 
-    insertBlockQuote () {
+    insertBlockQuote() {
       if (!this.canInsertBlockNode(BlockQuote.type)) throw new Error(DISALLOWED_MANIPULATION)
       return this._insertBlockNode(tx => {
         return substance.documentHelpers.createNodeFromJson(tx, BlockQuote.getTemplate())
       })
     }
 
-    insertCrossReference (refType) {
+    insertCrossReference(refType) {
       if (!this.canInsertCrossReference()) throw new Error(DISALLOWED_MANIPULATION)
       return this._insertCrossReference(refType)
     }
 
-    insertFootnoteReference () {
+    insertFootnoteReference() {
       if (!this.canInsertCrossReference()) throw new Error(DISALLOWED_MANIPULATION)
       // In table-figures we want to allow only cross-reference to table-footnotes
       let selectionState = this.getEditorState().selectionState;
@@ -7060,7 +7094,7 @@
     }
 
     // TODO: we should discuss if it would also make sense to create a figure with multiple panels
-    insertImagesAsFigures (files) {
+    insertImagesAsFigures(files) {
       // TODO: we would need a transaction on archive level, creating assets,
       // and then placing them inside the article body.
       // This way the archive gets 'polluted', i.e. a redo of that change does
@@ -7076,14 +7110,14 @@
       });
     }
 
-    insertInlineNode (nodeData) {
+    insertInlineNode(nodeData) {
       let nodeId = this._insertInlineNode(tx => {
         return substance.documentHelpers.createNodeFromJson(tx, nodeData)
       });
       return this.getDocument().get(nodeId)
     }
 
-    insertInlineGraphic (file) {
+    insertInlineGraphic(file) {
       if (!this.canInsertInlineGraphic()) throw new Error(DISALLOWED_MANIPULATION)
       const href = this.archive.addAsset(file);
       const mimeType = file.type;
@@ -7096,7 +7130,7 @@
       })
     }
 
-    insertInlineFormula (content) {
+    insertInlineFormula(content) {
       if (!this.canInsertInlineNode(InlineFormula.type)) throw new Error(DISALLOWED_MANIPULATION)
       return this._insertInlineNode(tx => {
         return tx.create({
@@ -7107,7 +7141,7 @@
       })
     }
 
-    insertSupplementaryFile (file, url) {
+    insertSupplementaryFile(file, url) {
       const articleSession = this.editorSession;
       if (file) url = this.archive.addAsset(file);
       let sel = articleSession.getSelection();
@@ -7123,32 +7157,32 @@
       });
     }
 
-    insertTable () {
+    insertTable() {
       if (!this.canInsertBlockNode(TableFigure.type)) throw new Error(DISALLOWED_MANIPULATION)
       return this._insertBlockNode(tx => {
         return substance.documentHelpers.createNodeFromJson(tx, TableFigure.getTemplate())
       })
     }
 
-    insertText (text) {
+    insertText(text) {
       return this.getEditorSession().insertText(text)
     }
 
-    moveEntityUp (nodeId) {
+    moveEntityUp(nodeId) {
       if (!this.canMoveEntityUp(nodeId)) throw new Error(DISALLOWED_MANIPULATION)
       this._moveEntity(nodeId, -1);
     }
 
-    moveEntityDown (nodeId) {
+    moveEntityDown(nodeId) {
       if (!this.canMoveEntityDown(nodeId)) throw new Error(DISALLOWED_MANIPULATION)
       this._moveEntity(nodeId, 1);
     }
 
-    paste (content, options) {
+    paste(content, options) {
       return this.getEditorSession().paste(content, options)
     }
 
-    removeEntity (nodeId) {
+    removeEntity(nodeId) {
       if (!this.canRemoveEntity(nodeId)) throw new Error(DISALLOWED_MANIPULATION)
       let node = this._getNode(nodeId);
       if (!node) throw new Error('Invalid argument.')
@@ -7156,7 +7190,7 @@
       this._removeItemFromCollection(nodeId, collectionPath);
     }
 
-    removeFootnote (footnoteId) {
+    removeFootnote(footnoteId) {
       // ATTENTION: footnotes appear in different contexts
       // e.g. article.footnotes, or table-fig.footnotes
       let doc = this.getDocument();
@@ -7165,12 +7199,12 @@
       this._removeItemFromCollection(footnoteId, [parent.id, 'footnotes']);
     }
 
-    renderEntity (entity, options) {
+    renderEntity(entity, options) {
       let exporter = this.config.createExporter('html');
       return renderEntity(entity, exporter)
     }
 
-    replaceFile (hrefPath, file) {
+    replaceFile(hrefPath, file) {
       const articleSession = this.editorSession;
       const path = this.archive.addAsset(file);
       articleSession.transaction(tx => {
@@ -7178,7 +7212,7 @@
       });
     }
 
-    selectNode (nodeId) {
+    selectNode(nodeId) {
       let selData = this._createNodeSelection(nodeId);
       if (selData) {
         this.editorSession.setSelection(selData);
@@ -7187,11 +7221,11 @@
 
     // EXPERIMENTAL need to figure out if we really need this
     // This is used by ManyRelationshipComponent (which is kind of weird)
-    selectValue (path) {
+    selectValue(path) {
       this._setSelection(this._createValueSelection(path));
     }
 
-    selectEntity (node) {
+    selectEntity(node) {
       if (substance.isString(node)) {
         node = this.getDocument().get(node);
       }
@@ -7202,7 +7236,7 @@
       }
     }
 
-    switchFigurePanel (figure, newPanelIndex) {
+    switchFigurePanel(figure, newPanelIndex) {
       const editorSession = this.editorSession;
       let sel = editorSession.getSelection();
       if (!sel.isNodeSelection() || sel.getNodeId() !== figure.id) {
@@ -7211,7 +7245,7 @@
       editorSession.updateNodeStates([[figure.id, { currentPanelIndex: newPanelIndex }]], { propagate: true });
     }
 
-    _addEntity (collectionPath, type, createNode) {
+    _addEntity(collectionPath, type, createNode) {
       const editorSession = this.getEditorSession();
       if (!createNode) {
         createNode = tx => tx.create({ type });
@@ -7224,14 +7258,14 @@
     }
 
     // This is used by CollectionModel
-    _appendChild (collectionPath, data) {
+    _appendChild(collectionPath, data) {
       this.editorSession.transaction(tx => {
         let node = tx.create(data);
         substance.documentHelpers.append(tx, collectionPath, node.id);
       });
     }
 
-    _createNodeSelection (nodeId) {
+    _createNodeSelection(nodeId) {
       let editorState = this.getEditorState();
       let doc = editorState.document;
       const node = doc.get(nodeId);
@@ -7252,7 +7286,7 @@
 
     // TODO: think if this is really needed. We could instead try to use NodeSelections
     // this might only problematic cause of the lack of a containerPath
-    _createEntitySelection (node, options = {}) {
+    _createEntitySelection(node, options = {}) {
       return {
         type: 'custom',
         customType: 'entity',
@@ -7260,7 +7294,7 @@
       }
     }
 
-    _createValueSelection (path) {
+    _createValueSelection(path) {
       return {
         type: 'custom',
         customType: 'value',
@@ -7273,33 +7307,33 @@
       }
     }
 
-    _customCopy () {
+    _customCopy() {
       if (this._tableApi.isTableSelected()) {
         return this._tableApi.copySelection()
       }
     }
 
-    _customCut () {
+    _customCut() {
       if (this._tableApi.isTableSelected()) {
         return this._tableApi.cut()
       }
     }
 
-    _customInsertText (text) {
+    _customInsertText(text) {
       if (this._tableApi.isTableSelected()) {
         this._tableApi.insertText(text);
         return true
       }
     }
 
-    _customPaste (content, options) {
+    _customPaste(content, options) {
       if (this._tableApi.isTableSelected()) {
         return this._tableApi.paste(content, options)
       }
     }
 
     // still used?
-    _deleteChild (collectionPath, child, txHook) {
+    _deleteChild(collectionPath, child, txHook) {
       this.editorSession.transaction(tx => {
         substance.documentHelpers.removeFromCollection(tx, collectionPath, child.id);
         substance.documentHelpers.deepDeleteNode(tx, child);
@@ -7315,7 +7349,7 @@
     // TODO: I am not sure if it is the right approach, trying to generalize this
     // Instead we could use dedicated Components derived from the ones from the kit
     // and use specific API to accomplish this
-    _getAvailableOptions (model) {
+    _getAvailableOptions(model) {
       let targetTypes = Array.from(model._targetTypes);
       if (targetTypes.length !== 1) {
         throw new Error('Unsupported relationship. Expected to find one targetType')
@@ -7339,7 +7373,7 @@
     }
 
     // TODO: how could we make this extensible via plugins?
-    _getAvailableXrefTargets (xref) {
+    _getAvailableXrefTargets(xref) {
       let refType = xref.refType;
       let manager;
       switch (refType) {
@@ -7412,7 +7446,7 @@
       return targets
     }
 
-    _getCollectionPathForItem (node) {
+    _getCollectionPathForItem(node) {
       let parent = node.getParent();
       let propName = node.getXpath().property;
       if (parent && propName) {
@@ -7424,7 +7458,7 @@
       }
     }
 
-    _getContainerPathForNode (node) {
+    _getContainerPathForNode(node) {
       let last = node.getXpath();
       let prop = last.property;
       let prev = last.prev;
@@ -7433,7 +7467,7 @@
       }
     }
 
-    _getFirstRequiredProperty (node) {
+    _getFirstRequiredProperty(node) {
       // TODO: still not sure if this is the right approach
       // Maybe it would be simpler to just use configuration
       // and fall back to 'node' or 'card' selection otherwise
@@ -7444,14 +7478,14 @@
       }
     }
 
-    _getNode (nodeId) {
+    _getNode(nodeId) {
       return nodeId._isNode ? nodeId : this.getDocument().get(nodeId)
     }
 
     // EXPERIMENTAL: trying to derive a surfaceId for a property in a specific node
     // exploiting knowledge about the implemented view structure
     // in manuscript it is either top-level (e.g. title, abstract) or part of a container (body)
-    _getSurfaceId (node, propertyName) {
+    _getSurfaceId(node, propertyName) {
       let xpath = node.getXpath().toArray();
       let idx = xpath.findIndex(entry => entry.id === 'body');
       let relXpath;
@@ -7464,7 +7498,7 @@
       return relXpath.map(e => e.id).join('/') + '.' + propertyName
     }
 
-    _insertBlockNode (createNode) {
+    _insertBlockNode(createNode) {
       let editorSession = this.getEditorSession();
       let nodeId;
       editorSession.transaction(tx => {
@@ -7476,7 +7510,7 @@
       return nodeId
     }
 
-    _insertCrossReference (refType) {
+    _insertCrossReference(refType) {
       this._insertInlineNode(tx => {
         return tx.create({
           type: Xref.type,
@@ -7485,7 +7519,7 @@
       });
     }
 
-    _insertInlineNode (createNode) {
+    _insertInlineNode(createNode) {
       let editorSession = this.getEditorSession();
       let nodeId;
       editorSession.transaction(tx => {
@@ -7500,31 +7534,31 @@
       return nodeId
     }
 
-    _isCollectionItem (node) {
+    _isCollectionItem(node) {
       return !substance.isNil(this._getCollectionPathForItem(node))
     }
 
-    _isFieldRequired (path) {
+    _isFieldRequired(path) {
       // ATTENTION: this API is experimental
       let settings = this.getEditorState().settings;
       let valueSettings = settings.getSettingsForValue(path);
       return Boolean(valueSettings['required'])
     }
 
-    _isManagedCollectionItem (node) {
+    _isManagedCollectionItem(node) {
       // ATM, only references are managed (i.e. not sorted manually)
       return node.isInstanceOf(Reference.type)
     }
 
     // TODO: we need a better way to update settings
-    _loadSettings (settings) {
+    _loadSettings(settings) {
       let editorState = this.getContext().editorState;
       editorState.settings.load(settings);
       editorState._setDirty('settings');
       editorState.propagateUpdates();
     }
 
-    _moveEntity (nodeId, shift) {
+    _moveEntity(nodeId, shift) {
       let node = this._getNode(nodeId);
       if (!node) throw new Error('Invalid argument.')
       let collectionPath = this._getCollectionPathForItem(node);
@@ -7537,7 +7571,7 @@
     // This needs a little more thinking, however, making it apparent
     // that in some cases it is not so easy to completely separate Commands
     // from EditorSession logic
-    _moveChild (collectionPath, childId, shift, txHook) {
+    _moveChild(collectionPath, childId, shift, txHook) {
       this.editorSession.transaction(tx => {
         let ids = tx.get(collectionPath);
         let pos = ids.indexOf(childId);
@@ -7551,13 +7585,13 @@
     }
 
     // used by CollectionModel
-    _removeChild (collectionPath, childId) {
+    _removeChild(collectionPath, childId) {
       this._removeItemFromCollection(childId, collectionPath);
     }
 
     // This method is used to cleanup xref targets
     // during footnote or reference removing
-    _removeCorrespondingXrefs (tx, node) {
+    _removeCorrespondingXrefs(tx, node) {
       let manager;
       if (node.isInstanceOf(Reference.type)) {
         manager = this._referenceManager;
@@ -7574,7 +7608,7 @@
       });
     }
 
-    _removeItemFromCollection (itemId, collectionPath) {
+    _removeItemFromCollection(itemId, collectionPath) {
       const editorSession = this.getEditorSession();
       editorSession.transaction(tx => {
         let item = tx.get(itemId);
@@ -7586,7 +7620,7 @@
       });
     }
 
-    _replaceSupplementaryFile (file, supplementaryFile) {
+    _replaceSupplementaryFile(file, supplementaryFile) {
       const articleSession = this.editorSession;
       const path = this.archive.addAsset(file);
       articleSession.transaction(tx => {
@@ -7597,7 +7631,7 @@
       });
     }
 
-    _selectInlineNode (inlineNode) {
+    _selectInlineNode(inlineNode) {
       return {
         type: 'property',
         path: inlineNode.getPath(),
@@ -7606,11 +7640,11 @@
       }
     }
 
-    _setSelection (sel) {
+    _setSelection(sel) {
       this.editorSession.setSelection(sel);
     }
 
-    _toggleRelationship (path, id) {
+    _toggleRelationship(path, id) {
       this.editorSession.transaction(tx => {
         let ids = tx.get(path);
         let idx = ids.indexOf(id);
@@ -7623,7 +7657,7 @@
       });
     }
 
-    _toggleXrefTarget (xref, targetId) {
+    _toggleXrefTarget(xref, targetId) {
       let targetIds = xref.refTargets;
       let index = targetIds.indexOf(targetId);
       if (index >= 0) {
@@ -7639,16 +7673,16 @@
   }
 
   class ArticleEditorSession extends substance.EditorSession {
-    copy () {
+    copy() {
       return this.context.api._customCopy() || super.copy()
     }
-    cut () {
+    cut() {
       return this.context.api._customCut() || super.cut()
     }
-    paste (content, options) {
+    paste(content, options) {
       return this.context.api._customPaste(content, options) || super.paste(content, options)
     }
-    insertText (text) {
+    insertText(text) {
       return this.context.api._customInsertText(text) || super.insertText(text)
     }
   }
@@ -7658,41 +7692,41 @@
    * a collection.
    */
   class AddEntityCommand extends substance.Command {
-    getCommandState () {
+    getCommandState() {
       return { disabled: false }
     }
 
-    execute (params, context) {
+    execute(params, context) {
       throw new Error('This is abstract')
     }
   }
 
   class AddAuthorCommand extends AddEntityCommand {
-    execute (params, context) {
+    execute(params, context) {
       context.editorSession.getRootComponent().send('startWorkflow', 'add-author-workflow');
     }
   }
 
   class AddAffiliationCommand extends AddEntityCommand {
-    execute (params, context) {
+    execute(params, context) {
       context.editorSession.getRootComponent().send('startWorkflow', 'add-affiliation-workflow');
     }
   }
 
   class AddAuthorCommand$1 extends AddEntityCommand {
-    execute (params, context) {
+    execute(params, context) {
       context.editorSession.getRootComponent().send('startWorkflow', 'add-reference-workflow');
     }
   }
 
   class AnnotationCommand extends substance.AnnotationCommand {
-    canCreate (annos, sel, context) {
+    canCreate(annos, sel, context) {
       return context.api.canCreateAnnotation(this.getType())
     }
   }
 
   class DecreaseHeadingLevelCommand extends substance.Command {
-    getCommandState (params, context) {
+    getCommandState(params, context) {
       let selState = context.editorState.selectionState;
       if (selState && selState.node && selState.node.type === 'heading') {
         return { disabled: selState.node.level <= Heading.MIN_LEVEL }
@@ -7701,7 +7735,7 @@
       }
     }
 
-    execute (params, context) {
+    execute(params, context) {
       context.api.dedent();
     }
   }
@@ -7711,7 +7745,7 @@
     Actual implementation of file downloading is done inside DownloadSupplementaryFileTool
   */
   class DownloadSupplementaryFileCommand extends substance.Command {
-    getCommandState (params, context) {
+    getCommandState(params, context) {
       const selectionState = params.selectionState;
       const xpath = selectionState.xpath;
       if (xpath.length > 0) {
@@ -7728,13 +7762,13 @@
       return { disabled: true }
     }
 
-    execute (params, context) {
+    execute(params, context) {
       // Nothing: downloading is implemented via native download hooks
     }
   }
 
   class EditEntityCommand extends substance.Command {
-    getCommandState (params, context) {
+    getCommandState(params, context) {
       let selectionState = context.editorState.selectionState;
       let node = selectionState.node;
       if (node && node.isInstanceOf(this._getType())) {
@@ -7747,23 +7781,23 @@
       }
     }
 
-    execute (params, context) {
+    execute(params, context) {
       // TODO: this might not be general enough, maybe we could introduce edit-entity-workflow
       // which could just be derived from edit-metadata-workflow
       let commandState = params.commandState;
       context.editorSession.getRootComponent().send('startWorkflow', 'edit-metadata-workflow', { nodeId: commandState.node.id });
     }
 
-    _getType () {
+    _getType() {
       throw new Error('This is abstract')
     }
   }
 
   class EditAuthorCommand extends EditEntityCommand {
-    _getType () {
+    _getType() {
       return Person.type
     }
-    getCommandState (params, context) {
+    getCommandState(params, context) {
       let commandState = super.getCommandState(params, context);
       if (!commandState.disabled) {
         let node = commandState.node;
@@ -7777,17 +7811,17 @@
   }
 
   class EditMetadataCommand extends substance.Command {
-    getCommandState () {
+    getCommandState() {
       return { disabled: false }
     }
 
-    execute (params, context) {
+    execute(params, context) {
       context.editorSession.getRootComponent().send('startWorkflow', 'edit-metadata-workflow');
     }
   }
 
   class EditReferenceCommand extends EditEntityCommand {
-    _getType () {
+    _getType() {
       return Reference.type
     }
   }
@@ -7798,22 +7832,22 @@
   // And pull out commands in individual files.
 
   class BasicFigureMetadataCommand extends substance.Command {
-    get contextType () {
+    get contextType() {
       return MetadataField.type
     }
 
-    getCommandState (params, context) {
+    getCommandState(params, context) {
       return {
         disabled: this.isDisabled(params, context)
       }
     }
 
-    isDisabled (params) {
+    isDisabled(params) {
       const xpath = params.selectionState.xpath;
       return !xpath.find(n => n.type === this.contextType)
     }
 
-    _getCollectionPath (params, context) {
+    _getCollectionPath(params, context) {
       const doc = params.editorSession.getDocument();
       const nodeId = params.selection.getNodeId();
       const node = doc.get(nodeId);
@@ -7830,11 +7864,11 @@
   }
 
   class AddFigureMetadataFieldCommand extends BasicFigureMetadataCommand {
-    get contextType () {
+    get contextType() {
       return 'figure'
     }
 
-    execute (params, context) {
+    execute(params, context) {
       const collectionPath = this._getCollectionPath(params, context);
       context.editorSession.transaction(tx => {
         let node = substance.documentHelpers.createNodeFromJson(tx, MetadataField.getTemplate());
@@ -7853,7 +7887,7 @@
   }
 
   class RemoveMetadataFieldCommand extends BasicFigureMetadataCommand {
-    execute (params, context) {
+    execute(params, context) {
       const collectionPath = this._getCollectionPath(params, context);
       context.editorSession.transaction(tx => {
         const nodeId = tx.selection.getNodeId();
@@ -7864,7 +7898,7 @@
   }
 
   class MoveMetadataFieldCommand extends BasicFigureMetadataCommand {
-    execute (params, context) {
+    execute(params, context) {
       const direction = this.config.direction;
       const collectionPath = this._getCollectionPath(params, context);
       const nodeId = params.selection.getNodeId();
@@ -7872,7 +7906,7 @@
       context.api._moveChild(collectionPath, nodeId, shift);
     }
 
-    isDisabled (params, context) {
+    isDisabled(params, context) {
       const matchSelection = !super.isDisabled(params);
       if (matchSelection) {
         const direction = this.config.direction;
@@ -7892,18 +7926,18 @@
   }
 
   class BasicFigurePanelCommand extends substance.Command {
-    getCommandState (params, context) {
+    getCommandState(params, context) {
       return {
         disabled: this.isDisabled(params, context)
       }
     }
 
-    isDisabled (params) {
+    isDisabled(params) {
       const xpath = params.selectionState.xpath;
       return !xpath.find(n => n.type === 'figure')
     }
 
-    _getFigure (params, context) {
+    _getFigure(params, context) {
       const sel = params.selection;
       const doc = params.editorSession.getDocument();
       let nodeId = sel.getNodeId();
@@ -7915,14 +7949,14 @@
       return doc.get(nodeId)
     }
 
-    _getFigurePanel (params, context) {
+    _getFigurePanel(params, context) {
       const figure = this._getFigure(params, context);
       const currentIndex = figure.getCurrentPanelIndex();
       const doc = figure.getDocument();
       return doc.get(figure.panels[currentIndex])
     }
 
-    _matchSelection (params, context) {
+    _matchSelection(params, context) {
       const xpath = params.selectionState.xpath;
       const isInFigure = xpath.find(n => n.type === 'figure');
       return isInFigure
@@ -7930,7 +7964,7 @@
   }
 
   class AddFigurePanelCommand extends BasicFigurePanelCommand {
-    execute (params, context) {
+    execute(params, context) {
       const files = params.files;
       // TODO: why only one file? we could also add multiple panels at once
       if (files.length > 0) {
@@ -7942,7 +7976,7 @@
   }
 
   class ReplaceFigurePanelImageCommand extends BasicFigurePanelCommand {
-    execute (params, context) {
+    execute(params, context) {
       const figurePanel = this._getFigurePanel(params, context);
       const files = params.files;
       if (files.length > 0) {
@@ -7951,7 +7985,7 @@
       }
     }
 
-    isDisabled (params, context) {
+    isDisabled(params, context) {
       const matchSelection = this._matchSelection(params, context);
       if (matchSelection) return false
       return true
@@ -7959,7 +7993,7 @@
   }
 
   class RemoveFigurePanelCommand extends BasicFigurePanelCommand {
-    execute (params, context) {
+    execute(params, context) {
       const api = context.api;
       const figure = this._getFigure(params, context);
       const figurePanel = this._getFigurePanel(params, context);
@@ -7969,7 +8003,7 @@
       });
     }
 
-    isDisabled (params, context) {
+    isDisabled(params, context) {
       const matchSelection = this._matchSelection(params, context);
       if (matchSelection) {
         const figure = this._getFigure(params, context);
@@ -7982,7 +8016,7 @@
   }
 
   class MoveFigurePanelCommand extends BasicFigurePanelCommand {
-    execute (params, context) {
+    execute(params, context) {
       // NOTE: this is an example where IMO it will be difficult
       // to separate Commands from EditorSession logic,
       // other than adding an API method for doing exactly this
@@ -7997,7 +8031,7 @@
       });
     }
 
-    isDisabled (params, context) {
+    isDisabled(params, context) {
       const matchSelection = this._matchSelection(params, context);
       if (matchSelection) {
         const figure = this._getFigure(params, context);
@@ -8016,12 +8050,12 @@
   class OpenFigurePanelImageCommand extends BasicFigurePanelCommand {
     // We are using this command only for state computation.
     // Actual implementation of opening sub-figure is done inside OpenSubFigureSourceTool.
-    execute () {
+    execute() {
     }
   }
 
   class IncreaseHeadingLevelCommand extends substance.Command {
-    getCommandState (params, context) {
+    getCommandState(params, context) {
       let selState = context.editorState.selectionState;
       if (selState && selState.node && selState.node.type === 'heading') {
         return { disabled: selState.node.level >= Heading.MAX_LEVEL }
@@ -8030,71 +8064,71 @@
       }
     }
 
-    execute (params, context) {
+    execute(params, context) {
       context.api.indent();
     }
   }
 
   class InsertNodeCommand extends substance.InsertNodeCommand {
-    execute (params, context) {
+    execute(params, context) {
       throw new Error('This method is abstract')
     }
   }
 
   class InsertBlockFormulaCommand extends InsertNodeCommand {
-    getType () {
+    getType() {
       return BlockFormula.type
     }
 
-    execute (params, context) {
+    execute(params, context) {
       context.api.insertBlockFormula();
     }
   }
 
   class InsertBlockQuoteCommand extends InsertNodeCommand {
-    getType () {
+    getType() {
       return BlockQuote.type
     }
-    execute (params, context) {
+    execute(params, context) {
       context.api.insertBlockQuote();
     }
   }
 
   class InsertInlineNodeCommand extends substance.InsertInlineNodeCommand {
-    getType () {
+    getType() {
       throw new Error('This method is abstract')
     }
 
     /**
       Insert new inline node at the current selection
     */
-    execute (params, context) {
+    execute(params, context) {
       throw new Error('This method is abstract')
     }
 
-    isDisabled (params, context) {
+    isDisabled(params, context) {
       return !context.api.canInsertInlineNode(this.getType(), true)
     }
   }
 
   class InsertCrossReferenceCommand extends InsertInlineNodeCommand {
-    getType () {
+    getType() {
       return 'xref'
     }
 
-    execute (params, context) {
+    execute(params, context) {
       context.api.insertCrossReference(this.config.refType);
     }
   }
 
-  class InsertExtLinkCommand extends AnnotationCommand {}
+  class InsertExtLinkCommand extends AnnotationCommand { }
 
   // TODO: this is kind of surprising, because it actually allows to insert multiple figures at once
   class InsertFigureCommand extends InsertNodeCommand {
-    getType () {
+    getType() {
       return Figure.type
     }
-    execute (params, context) {
+    execute(params, context) {
       const state = params.commandState;
       const files = params.files;
       if (state.disabled) return
@@ -8105,12 +8139,12 @@
   }
 
   class InsertFootnoteCommand extends AddEntityCommand {
-    detectScope (params) {
+    detectScope(params) {
       const xpath = params.selectionState.xpath;
       return xpath.find(n => n.type === 'table-figure') ? 'table-figure' : 'default'
     }
 
-    _getCollectionPath (params, context) {
+    _getCollectionPath(params, context) {
       const scope = this.detectScope(params);
       if (scope === 'default') {
         return ['article', 'footnotes']
@@ -8128,35 +8162,35 @@
       }
     }
 
-    execute (params, context) {
+    execute(params, context) {
       let footnoteCollectionPath = this._getCollectionPath(params, context);
       context.api.addFootnote(footnoteCollectionPath);
     }
   }
 
   class InsertFootnoteCrossReferenceCommand extends InsertCrossReferenceCommand {
-    execute (params, context) {
+    execute(params, context) {
       context.api.insertFootnoteReference();
     }
   }
 
   class InsertInlineFormulaCommand extends InsertInlineNodeCommand {
-    getType () {
+    getType() {
       return 'inline-formula'
     }
 
-    execute (params, context) {
+    execute(params, context) {
       let selectionState = context.editorState.get('selectionState');
       context.api.insertInlineFormula(selectionState.selectedText);
     }
   }
 
   class InsertInlineGraphicCommand extends InsertInlineNodeCommand {
-    getType () {
+    getType() {
       return 'inline-graphic'
     }
 
-    execute (params, context) {
+    execute(params, context) {
       const files = params.files;
       if (files.length > 0) {
         context.api.insertInlineGraphic(files[0]);
@@ -8169,14 +8203,14 @@
     Use it when you want to insert a node after additional workflow step.
   */
   class InsertNodeFromWorkflowCommand extends InsertNodeCommand {
-    execute (params, context) {
+    execute(params, context) {
       const workflow = this.config.workflow;
       context.editorSession.getRootComponent().send('startWorkflow', workflow);
     }
   }
 
   class InsertTableCommand extends InsertNodeCommand {
-    execute (params, context) {
+    execute(params, context) {
       context.api.insertTable();
     }
   }
@@ -8186,14 +8220,14 @@
 
   // turns the current text node into a list
   class CreateListCommand extends substance.Command {
-    isSwitchTypeCommand () { return true }
+    isSwitchTypeCommand() { return true }
 
     // TODO: do we want to generalize this to other list types?
-    getType () {
+    getType() {
       return 'list'
     }
 
-    getCommandState (params) {
+    getCommandState(params) {
       let editorSession = params.editorSession;
       let doc = editorSession.getDocument();
       let sel = editorSession.getSelection();
@@ -8211,7 +8245,7 @@
       return { disabled: true }
     }
 
-    execute (params) {
+    execute(params) {
       let commandState = params.commandState;
       const { disabled } = commandState;
       if (disabled) return
@@ -8223,7 +8257,7 @@
   }
 
   class ChangeListTypeCommand extends substance.Command {
-    getCommandState (params) {
+    getCommandState(params) {
       let editorSession = params.editorSession;
       let doc = editorSession.getDocument();
       let sel = editorSession.getSelection();
@@ -8251,7 +8285,7 @@
       return { disabled: true }
     }
 
-    execute (params) {
+    execute(params) {
       let commandState = params.commandState;
       const { disabled, action } = commandState;
       if (disabled) return
@@ -8279,7 +8313,7 @@
   }
 
   class RemoveItemCommand extends substance.Command {
-    getCommandState (params, context) {
+    getCommandState(params, context) {
       let node = this._getNode(params);
       return {
         disabled: !node,
@@ -8287,7 +8321,7 @@
       }
     }
 
-    _getNode (params) {
+    _getNode(params) {
       const nodeType = this.config.nodeType;
       const sel = params.selection;
       if (sel && !sel.isNull()) {
@@ -8305,19 +8339,19 @@
   }
 
   class RemoveFootnoteCommand extends RemoveItemCommand {
-    execute (params, context) {
+    execute(params, context) {
       context.api.removeFootnote(params.commandState.nodeId);
     }
   }
 
   class RemoveReferenceCommand extends RemoveItemCommand {
-    execute (params, context) {
+    execute(params, context) {
       context.api.removeReference(params.commandState.nodeId);
     }
   }
 
   class ReplaceSupplementaryFileCommand extends substance.Command {
-    getCommandState (params, context) {
+    getCommandState(params, context) {
       const xpath = params.selectionState.xpath;
       if (xpath.length > 0) {
         const selectedType = xpath[xpath.length - 1].type;
@@ -8331,7 +8365,7 @@
       return { disabled: true }
     }
 
-    execute (params, context) {
+    execute(params, context) {
       const state = params.commandState;
       if (state.disabled) return
       const files = params.files;
@@ -8349,14 +8383,14 @@
   // and move manipulation code into ArticleAPI
 
   class BasicTableCommand extends substance.Command {
-    getCommandState (params, context) { // eslint-disable-line no-unused-vars
+    getCommandState(params, context) { // eslint-disable-line no-unused-vars
       const tableApi = context.api.getTableAPI();
       if (!tableApi.isTableSelected()) return DISABLED$1
       const selData = tableApi._getSelectionData();
       return Object.assign({ disabled: false }, selData)
     }
 
-    execute (params, context) { // eslint-disable-line no-unused-vars
+    execute(params, context) { // eslint-disable-line no-unused-vars
       const commandState = params.commandState;
       if (commandState.disabled) return
 
@@ -8366,7 +8400,7 @@
   }
 
   class InsertCellsCommand extends BasicTableCommand {
-    _execute (tableApi, { ncols, nrows }) {
+    _execute(tableApi, { ncols, nrows }) {
       const mode = this.config.spec.pos;
       const dim = this.config.spec.dim;
       if (dim === 'row') {
@@ -8379,7 +8413,7 @@
   }
 
   class DeleteCellsCommand extends BasicTableCommand {
-    _execute (tableApi, { startRow, startCol, nrows, ncols }) {
+    _execute(tableApi, { startRow, startCol, nrows, ncols }) {
       const dim = this.config.spec.dim;
       if (dim === 'row') {
         tableApi.deleteRows();
@@ -8391,14 +8425,14 @@
   }
 
   class TableSelectAllCommand extends BasicTableCommand {
-    _execute (tableApi) {
+    _execute(tableApi) {
       tableApi.selectAll();
       return true
     }
   }
 
   class ToggleCellHeadingCommand extends BasicTableCommand {
-    getCommandState (params, context) { // eslint-disable-line no-unused-vars
+    getCommandState(params, context) { // eslint-disable-line no-unused-vars
       let commandState = super.getCommandState(params, context);
       if (commandState.disabled) return commandState
 
@@ -8418,14 +8452,14 @@
       })
     }
 
-    _execute (tableApi, { cellIds, heading }) {
+    _execute(tableApi, { cellIds, heading }) {
       tableApi.toggleHeading(cellIds);
       return true
     }
   }
 
   class ToggleCellMergeCommand extends BasicTableCommand {
-    getCommandState (params, context) { // eslint-disable-line no-unused-vars
+    getCommandState(params, context) { // eslint-disable-line no-unused-vars
       let commandState = super.getCommandState(params, context);
       if (commandState.disabled) return commandState
 
@@ -8454,7 +8488,7 @@
       return commandState
     }
 
-    _execute (tableApi, { merge, unmerge }) {
+    _execute(tableApi, { merge, unmerge }) {
       if (merge) {
         tableApi.merge();
       } else if (unmerge) {
@@ -8467,10 +8501,10 @@
   // TODO: move manipulation code into ArticleAPI
 
   class ToggleListCommand extends substance.Command {
-    isSwitchTypeCommand () { return true }
+    isSwitchTypeCommand() { return true }
 
     // TODO: do we want to generalize this to other list types?
-    getType () {
+    getType() {
       return 'list'
     }
 
@@ -8478,7 +8512,7 @@
       Note: this implementation is still very coupled with the specific internal data model.
       TODO: we could try to use API to generalize this
     */
-    getCommandState (params) {
+    getCommandState(params) {
       let editorSession = params.editorSession;
       let doc = editorSession.getDocument();
       let sel = editorSession.getSelection();
@@ -8515,7 +8549,7 @@
       Note: this implementation is still very coupled with the specific internal data model.
       TODO: we could try to use API to generalize this
     */
-    execute (params) {
+    execute(params) {
       let commandState = params.commandState;
       const { disabled, action } = commandState;
       if (disabled) return
@@ -8543,13 +8577,13 @@
           break
         }
         default:
-          //
+        //
       }
     }
   }
 
   class AbstractComponent extends NodeComponent {
-    render ($$) {
+    render($$) {
       let el = $$('div').addClass('sc-abstract');
       el.append(
         this._renderValue($$, 'content', {
@@ -8567,11 +8601,11 @@
     handleUploadedFiles method to implement your own file handling strategy.
   */
   class FileUploadComponent extends substance.Component {
-    get acceptedFiles () {
+    get acceptedFiles() {
       return false
     }
 
-    render ($$) {
+    render($$) {
       const el = $$('div').addClass('sc-file-upload');
 
       const selectInput = $$('input').attr({
@@ -8613,33 +8647,33 @@
       return el
     }
 
-    renderErrorsList ($$) {
+    renderErrorsList($$) {
       return $$('ul').addClass('se-error-list').append(this.getLabel('file-upload-error'))
     }
 
-    handleUploadedFiles (files) {
+    handleUploadedFiles(files) {
       throw new Error('This method is abstract')
     }
 
-    _onClick () {
+    _onClick() {
       this.refs.input.click();
     }
 
-    _supressClickPropagation (e) {
+    _supressClickPropagation(e) {
       e.stopPropagation();
     }
 
-    _selectFile (e) {
+    _selectFile(e) {
       const files = e.currentTarget.files;
       this.handleUploadedFiles(files);
     }
 
-    _handleDrop (e) {
+    _handleDrop(e) {
       const files = e.dataTransfer.files;
       this.handleUploadedFiles(files);
     }
 
-    _onDrag (e) {
+    _onDrag(e) {
       // Stop event propagation for the dragstart and dragenter
       // events, to avoid editor drag manager errors
       e.stopPropagation();
@@ -8648,7 +8682,7 @@
 
   class SupplementaryFileUploadComponent extends FileUploadComponent {
     // NOTE: we are sending uploaded files up to the workflow component
-    handleUploadedFiles (files) {
+    handleUploadedFiles(files) {
       if (files) {
         this.send('importFile', files);
       }
@@ -8656,11 +8690,11 @@
   }
 
   class AddSupplementaryFileWorkflow extends substance.Component {
-    static get desiredWidth () {
+    static get desiredWidth() {
       return 'medium'
     }
 
-    didMount () {
+    didMount() {
       super.didMount();
 
       this.handleActions({
@@ -8668,7 +8702,7 @@
       });
     }
 
-    render ($$) {
+    render($$) {
       let el = $$('div').addClass('sc-add-supplementary-file sm-workflow');
 
       let Input = this.getComponent('input');
@@ -8680,7 +8714,8 @@
 
       const urlInput = $$(InputWithButton, {
         input: $$(Input, {
-          placeholder: this.getLabel('supplementary-file-link-placeholder') }
+          placeholder: this.getLabel('supplementary-file-link-placeholder')
+        }
         ).ref('urlInput'),
         button: $$(Button).append(
           this.getLabel('add-action')
@@ -8698,14 +8733,14 @@
       return el
     }
 
-    _onExternalFileImport () {
+    _onExternalFileImport() {
       const url = this.refs.urlInput.val();
       let api = this.context.api;
       api.insertSupplementaryFile(null, url);
       this.send('closeModal');
     }
 
-    _onFileImport (files) {
+    _onFileImport(files) {
       let api = this.context.api;
       api.insertSupplementaryFile(files[0]);
       this.send('closeModal');
@@ -8713,7 +8748,7 @@
   }
 
   class AuthorsListComponent extends substance.CustomSurface {
-    getInitialState () {
+    getInitialState() {
       let items = this._getAuthors();
       return {
         hidden: items.length === 0,
@@ -8721,7 +8756,7 @@
       }
     }
 
-    didMount () {
+    didMount() {
       super.didMount();
 
       const appState = this.context.editorState;
@@ -8731,12 +8766,12 @@
       appState.addObserver(['selection'], this.rerender, this, { stage: 'render' });
     }
 
-    dispose () {
+    dispose() {
       super.dispose();
       this.context.editorState.removeObserver(this);
     }
 
-    render ($$) {
+    render($$) {
       let el = $$('div').addClass('sc-authors-list');
       el.append(
         this._renderAuthors($$)
@@ -8744,7 +8779,7 @@
       return el
     }
 
-    _renderAuthors ($$) {
+    _renderAuthors($$) {
       const sel = this.context.editorState.selection;
       const authors = this._getAuthors();
       let els = [];
@@ -8761,17 +8796,17 @@
       return els
     }
 
-    _getCustomResourceId () {
+    _getCustomResourceId() {
       return 'authors-list'
     }
 
-    _getAuthors () {
+    _getAuthors() {
       return this.props.model.getItems()
     }
   }
 
   class AuthorDisplay extends NodeComponent {
-    render ($$) {
+    render($$) {
       let el = $$('span').addClass('se-contrib').html(
         this.context.api.renderEntity(this.props.node)
       );
@@ -8780,25 +8815,25 @@
       return el
     }
 
-    _onMousedown (e) {
+    _onMousedown(e) {
       e.stopPropagation();
       if (e.button === 2) {
         this._select();
       }
     }
 
-    _onClick (e) {
+    _onClick(e) {
       e.stopPropagation();
       this._select();
     }
 
-    _select () {
+    _select() {
       this.context.api.selectEntity(this.props.node.id);
     }
   }
 
   class BlockFormulaEditor extends substance.Component {
-    render ($$) {
+    render($$) {
       let el = $$('div').addClass('sc-block-formula-editor');
       const node = this.props.node;
 
@@ -8816,13 +8851,13 @@
   }
 
   class PreviewComponent extends substance.Component {
-    getChildContext () {
+    getChildContext() {
       return {
         editable: false
       }
     }
 
-    render ($$) {
+    render($$) {
       let id = this.props.id;
       let el = $$('div')
         .addClass('sc-preview')
@@ -8850,15 +8885,15 @@
   }
 
   class BlockFormulaComponent extends NodeOverlayEditorMixin(NodeComponent) {
-    getInitialState () {
+    getInitialState() {
       return this._deriveState(this.props, {})
     }
 
-    willUpdateProps (newProps) {
+    willUpdateProps(newProps) {
       this.setState(this._deriveState(newProps));
     }
 
-    render ($$) {
+    render($$) {
       const mode = this.props.mode;
       const node = this.props.node;
       const label = getLabel(node) || '?';
@@ -8908,11 +8943,11 @@
       return el
     }
 
-    _onNodeUpdate () {
+    _onNodeUpdate() {
       this.setState(this._deriveState(this.props, this.state));
     }
 
-    _deriveState (props, oldState) {
+    _deriveState(props, oldState) {
       try {
         let html = katex.renderToString(props.node.content);
         return { html, lastHtml: html }
@@ -8925,17 +8960,17 @@
       }
     }
 
-    _getEditorClass () {
+    _getEditorClass() {
       return BlockFormulaEditor
     }
 
-    _shouldEnableOverlayEditor () {
+    _shouldEnableOverlayEditor() {
       return this.props.mode !== PREVIEW_MODE
     }
   }
 
   class BlockQuoteComponent extends NodeComponent {
-    render ($$) {
+    render($$) {
       let node = this.props.node;
       let el = $$('div')
         .addClass('sc-block-quote')
@@ -8950,13 +8985,13 @@
   }
 
   class BoldComponent extends substance.AnnotationComponent {
-    getTagName () {
+    getTagName() {
       return 'b'
     }
   }
 
   class BreakComponent extends substance.Component {
-    render ($$) {
+    render($$) {
       return $$('br')
     }
   }
@@ -8965,7 +9000,7 @@
    * A component that renders a node in a generic way iterating all properties.
    */
   class DefaultNodeComponent extends substance.Component {
-    didMount () {
+    didMount() {
       // EXPERIMENTAL: ExperimentalArticleValidator updates `node.id, @issues`
       const node = this._getNode();
       this.context.editorState.addObserver(['document'], this._rerenderWhenIssueHaveChanged, this, {
@@ -8976,17 +9011,17 @@
       });
     }
 
-    dispose () {
+    dispose() {
       this.context.editorState.removeObserver(this);
     }
 
-    getInitialState () {
+    getInitialState() {
       return {
         showAllFields: false
       }
     }
 
-    render ($$) {
+    render($$) {
       const showAllFields = this.state.showAllFields;
       const node = this._getNode();
       // TODO: issues should be accessed via model, not directly
@@ -9045,7 +9080,7 @@
       return el
     }
 
-    _renderProperty ($$, name, value, nodeIssues) {
+    _renderProperty($$, name, value, nodeIssues) {
       const PropertyEditor = this._getPropertyEditorClass(name, value);
       const editorProps = this._getPropertyEditorProps(name, value);
       // skip this property if the editor implementation produces nil
@@ -9060,26 +9095,26 @@
       }
     }
 
-    _getNode () {
+    _getNode() {
       return this.props.node
     }
 
-    _getProperties () {
+    _getProperties() {
       if (!this._properties) {
         this._properties = this._createPropertyModels();
       }
       return this._properties
     }
 
-    _createPropertyModels () {
+    _createPropertyModels() {
       return createNodePropertyModels(this.context.api, this._getNode())
     }
 
-    _getClassNames () {
+    _getClassNames() {
       return `sc-default-model sm-${this._getNode().type}`
     }
 
-    _renderHeader ($$) {
+    _renderHeader($$) {
       // TODO: rethink this. IMO it is not possible to generalize this implementation.
       // Maybe it is better to just use the regular component and pass a prop to allow the component to render in a 'short' style
       const ModelPreviewComponent = this.getComponent('model-preview', true);
@@ -9096,20 +9131,20 @@
     /*
       Can be overriden to specify for which properties, labels should be hidden.
     */
-    _showLabelForProperty (prop) {
+    _showLabelForProperty(prop) {
       return true
     }
 
     // TODO: get rid of this
-    get isRemovable () {
+    get isRemovable() {
       return true
     }
 
-    _getPropertyEditorClass (name, value) {
+    _getPropertyEditorClass(name, value) {
       return this.getComponent(value.type)
     }
 
-    _getPropertyEditorProps (name, value) {
+    _getPropertyEditorProps(name, value) {
       let props = {
         // TODO: rename to value
         model: value,
@@ -9126,7 +9161,7 @@
       return props
     }
 
-    _getPlaceHolder (name) {
+    _getPlaceHolder(name) {
       // ATTENTION: usually we avoid using automatically derived labels
       // but this class is all about a automated rendereding
       let placeHolder;
@@ -9145,7 +9180,7 @@
       return placeHolder
     }
 
-    _getRequiredOrNonEmptyPropertyNames (properties) {
+    _getRequiredOrNonEmptyPropertyNames(properties) {
       const api = this.context.api;
       let result = new Set();
       for (let [name, value] of properties) {
@@ -9156,12 +9191,12 @@
       return Array.from(result)
     }
 
-    _toggleMode () {
+    _toggleMode() {
       const showAllFields = this.state.showAllFields;
       this.extendState({ showAllFields: !showAllFields });
     }
 
-    _rerenderWhenIssueHaveChanged () {
+    _rerenderWhenIssueHaveChanged() {
       // console.log('Rerendering NodeModelCompent after issues have changed', this._getNode().id)
       this.rerender();
     }
@@ -9172,7 +9207,7 @@
     See EntityDatabase for schemas.
   */
 
-  function convertCSLJSON (source) {
+  function convertCSLJSON(source) {
     let bibType = source.type;
     let result;
 
@@ -9225,7 +9260,7 @@
     return result
   }
 
-  function _convertFromCSLJSON (source, type) {
+  function _convertFromCSLJSON(source, type) {
     const date = _extractDateFromCSLJSON(source);
 
     let data = {
@@ -9308,7 +9343,7 @@
     return data
   }
 
-  function _extractDateFromCSLJSON (source) {
+  function _extractDateFromCSLJSON(source) {
     let date = {};
     if (source.issued && source.issued['date-parts']) {
       let CSLdate = source.issued['date-parts'];
@@ -9326,7 +9361,7 @@
   }
 
   class QueryComponent extends substance.Component {
-    render ($$) {
+    render($$) {
       let Input = this.getComponent('input');
 
       const btnEl = $$('button').addClass('se-action');
@@ -9367,19 +9402,19 @@
       return el
     }
 
-    _renderIcon ($$, icon) {
+    _renderIcon($$, icon) {
       return $$('div').addClass('se-icon').append(
         this.context.iconProvider.renderIcon($$, icon)
       )
     }
 
-    _onQuery () {
+    _onQuery() {
       const input = this.refs.input;
       const val = input.val();
       if (val) this.send('query', val);
     }
 
-    _unblockUI () {
+    _unblockUI() {
       if (this.props.errors) {
         this.extendProps({ errors: undefined });
       }
@@ -9387,20 +9422,20 @@
   }
 
   class DOIInputComponent extends substance.Component {
-    constructor (...args) {
+    constructor(...args) {
       super(...args);
       this.handleActions({
         'query': this._startImporting
       });
     }
 
-    getInitialState () {
+    getInitialState() {
       return {
         loading: false
       }
     }
 
-    render ($$) {
+    render($$) {
       return $$('div').addClass('sc-doi-input').append(
         $$(QueryComponent, {
           placeholder: 'enter-doi-placeholder',
@@ -9411,7 +9446,7 @@
       )
     }
 
-    async _startImporting (input) {
+    async _startImporting(input) {
       const dois = input.split(' ').map(v => v.trim()).filter(v => Boolean(v));
       this.extendState({ loading: true });
 
@@ -9435,7 +9470,7 @@
   */
   const ENDPOINT = 'https://doi.org/';
 
-  function _getBibEntries (dois) {
+  function _getBibEntries(dois) {
     return _fetchCSLJSONEntries(dois).then(entries => {
       let conversionErrors = [];
       let convertedEntries = [];
@@ -9461,7 +9496,7 @@
   /*
     Fetch CSL JSON entries
   */
-  function _fetchCSLJSONEntries (dois) {
+  function _fetchCSLJSONEntries(dois) {
     let errored = [];
     let entries = [];
 
@@ -9485,7 +9520,7 @@
   /*
     Fetch single entry for DOI
   */
-  function _fetchDOI (doi) {
+  function _fetchDOI(doi) {
     // ATTENTION: sendRequest uses XMLHTTPRequest, thus make sure to call it only in the browser
     if (substance.platform.inBrowser) {
       const url = ENDPOINT + doi;
@@ -9496,7 +9531,7 @@
   }
 
   class DownloadSupplementaryFileTool extends Tool {
-    render ($$) {
+    render($$) {
       let el = super.render($$);
       let link = $$('a').ref('link')
         // ATTENTION: stop propagation, otherwise infinite loop
@@ -9523,17 +9558,17 @@
       return el
     }
 
-    getClassNames () {
+    getClassNames() {
       return 'sc-download-supplementary-file-tool sc-tool'
     }
 
-    _onClick (e) {
+    _onClick(e) {
       e.stopPropagation();
       e.preventDefault();
       this._triggerDownload();
     }
 
-    _triggerDownload () {
+    _triggerDownload() {
       const archive = this.context.archive;
       const node = this._getNode();
       const isLocal = this._isLocal();
@@ -9549,11 +9584,11 @@
       }
     }
 
-    _getNode () {
+    _getNode() {
       return this.props.commandState.node
     }
 
-    _isLocal () {
+    _isLocal() {
       let node = this._getNode();
       return (!node || !node.remote)
     }
@@ -9561,19 +9596,19 @@
 
   // Base-class for Manuscript- and MetadataEditor to reduced code-redundancy
   class EditorPanel extends substance.Component {
-    constructor (...args) {
+    constructor(...args) {
       super(...args);
 
       this._initialize(this.props);
     }
 
     // EXPERIMENTAL: Editor interface to be able to access the root element of editable content
-    getContentPanel () {
+    getContentPanel() {
       return this.refs.contentPanel
     }
 
     // TODO: shouldn't we react on willReceiveProps?
-    _initialize (props) {
+    _initialize(props) {
       const { editorSession } = props;
       const config = this.context.config;
       const context = Object.assign(this.context, substance.createEditorContext(config, editorSession, this), {
@@ -9582,14 +9617,14 @@
       this.context = context;
     }
 
-    _restoreViewport () {
+    _restoreViewport() {
       if (this.props.viewport) {
         // console.log('Restoring viewport', this.props.viewport)
         this.refs.contentPanel.setScrollPosition(this.props.viewport.x);
       }
     }
 
-    dispose () {
+    dispose() {
       const appState = this.context.editorState;
       const editorSession = this._getEditorSession();
       editorSession.dispose();
@@ -9597,33 +9632,33 @@
       this.props.archive.off(this);
     }
 
-    getComponentRegistry () {
+    getComponentRegistry() {
       return this.props.config.getComponentRegistry()
     }
 
-    _getConfigurator () {
+    _getConfigurator() {
       return this.props.config
     }
 
-    _getContentPanel () {
+    _getContentPanel() {
       /* istanbul ignore next */
       throw new Error('This method is abstract')
     }
 
-    _getDocument () {
+    _getDocument() {
       return this._getEditorSession().getDocument()
     }
 
-    _getEditorSession () {
+    _getEditorSession() {
       return this.props.editorSession
     }
 
-    _getTheme () {
+    _getTheme() {
       // TODO: this should come from app settings
       return 'light'
     }
 
-    _onKeydown (e) {
+    _onKeydown(e) {
       // console.log('EditorPanel._onKeydown', e)
       let handled = false;
       const appState = this.context.editorState;
@@ -9636,7 +9671,7 @@
           break
         }
         default:
-          //
+        //
       }
       if (!handled) {
         handled = this.context.keyboardManager.onKeydown(e, this.context);
@@ -9648,7 +9683,7 @@
       return handled
     }
 
-    _renderWorkflow ($$, workflowId) {
+    _renderWorkflow($$, workflowId) {
       let workflowProps = this.context.editorState.workflowProps || {};
       let Modal = this.getComponent('modal');
       let WorkflowComponent = this.getComponent(workflowId);
@@ -9658,12 +9693,12 @@
       }).addClass('se-workflow-modal sm-workflow-' + workflowId)
     }
 
-    _scrollElementIntoView (el, force) {
+    _scrollElementIntoView(el, force) {
       this._getContentPanel().scrollElementIntoView(el, !force);
     }
 
     // used for scrolling when clicking on TOC entries
-    _scrollTo (params) {
+    _scrollTo(params) {
       let selector;
       if (params.nodeId) {
         selector = `[data-id="${params.nodeId}"]`;
@@ -9684,7 +9719,7 @@
    * Used in the popup when cursor is on an external-link.
    */
   class ExternalLinkEditor extends substance.Component {
-    render ($$) {
+    render($$) {
       let TextPropertyEditor = this.getComponent('text-property-editor');
       let Button = this.getComponent('button');
       let el = $$('div').addClass('sc-external-link-editor').addClass('sm-horizontal-layout');
@@ -9711,7 +9746,7 @@
       return el
     }
 
-    _openLink () {
+    _openLink() {
       let url = this.props.node.href;
       // FIXME: this is not the way how it should be done
       // instead we should send up an action 'open-url'
@@ -9721,16 +9756,16 @@
   }
 
   class ExternalLinkComponent extends EditableAnnotationComponent {
-    render ($$) {
+    render($$) {
       let node = this.props.node;
       return super.render($$).attr('href', node.href).addClass('sc-external-link')
     }
 
-    getTagName () {
+    getTagName() {
       return 'a'
     }
 
-    _getEditorClass () {
+    _getEditorClass() {
       return ExternalLinkEditor
     }
   }
@@ -9739,7 +9774,7 @@
     /*
       Note: in the Manuscript View only one figure panel is shown at time.
     */
-    render ($$) {
+    render($$) {
       let mode = this._getMode();
       let node = this.props.node;
       let panels = node.panels;
@@ -9752,7 +9787,7 @@
       return el
     }
 
-    _renderCarousel ($$, panels) {
+    _renderCarousel($$, panels) {
       if (panels.length === 1) {
         return this._renderCurrentPanel($$)
       } else {
@@ -9765,7 +9800,7 @@
       }
     }
 
-    _renderCurrentPanel ($$) {
+    _renderCurrentPanel($$) {
       let panel = this._getCurrentPanel();
       let PanelComponent = this.getComponent(panel.type);
       return $$(PanelComponent, {
@@ -9774,7 +9809,7 @@
       }).ref(panel.id)
     }
 
-    _renderNavigation ($$) {
+    _renderNavigation($$) {
       const node = this.props.node;
       const panels = node.getPanels();
       const numberOfPanels = panels.length;
@@ -9803,11 +9838,11 @@
       )
     }
 
-    _getMode () {
+    _getMode() {
       return this.props.mode || 'manuscript'
     }
 
-    _getCurrentPanel () {
+    _getCurrentPanel() {
       let node = this.props.node;
       let doc = node.getDocument();
       let currentPanelIndex = this._getCurrentPanelIndex();
@@ -9815,7 +9850,7 @@
       return doc.get(ids[currentPanelIndex])
     }
 
-    _getCurrentPanelIndex () {
+    _getCurrentPanelIndex() {
       let node = this.props.node;
       let state = node.state;
       let panels = node.panels;
@@ -9831,12 +9866,12 @@
       return currentPanelIndex
     }
 
-    _onSwitchPanel (direction) {
+    _onSwitchPanel(direction) {
       let currentIndex = this._getCurrentPanelIndex();
       this.context.api.switchFigurePanel(this.props.node, direction === 'left' ? --currentIndex : ++currentIndex);
     }
 
-    _renderIcon ($$, iconName) {
+    _renderIcon($$, iconName) {
       return $$('div').addClass('se-icon').append(
         this.context.iconProvider.renderIcon($$, iconName)
       )
@@ -9844,7 +9879,7 @@
   }
 
   class FigureMetadataComponent extends ValueComponent {
-    render ($$) {
+    render($$) {
       let items = this.props.model.getItems();
       let el = $$('div').addClass('sc-figure-metadata');
       if (items.length > 0) {
@@ -9857,14 +9892,14 @@
       return el
     }
 
-    _renderMetadataField ($$, metadataField) {
+    _renderMetadataField($$, metadataField) {
       let MetadataFieldComponent = this.getComponent(metadataField.type);
       return $$(MetadataFieldComponent, { node: metadataField }).ref(metadataField.id)
     }
   }
 
   class DropdownEditor extends ValueComponent {
-    render ($$) {
+    render($$) {
       const model = this.props.model;
       const value = model.getValue();
       let el = $$('div').addClass(this._getClassNames());
@@ -9889,19 +9924,19 @@
       return el
     }
 
-    _getClassNames () {
+    _getClassNames() {
       return 'sc-dropdown-editor'
     }
 
-    _getLabel () {
+    _getLabel() {
       return this.getLabel('select-value')
     }
 
-    _getValues () {
+    _getValues() {
       return []
     }
 
-    _setValue () {
+    _setValue() {
       const model = this.props.model;
       const input = this.refs.input;
       const value = input.getValue();
@@ -9910,21 +9945,21 @@
   }
 
   class LicenseEditor extends DropdownEditor {
-    _getLabel () {
+    _getLabel() {
       return this.getLabel('select-license')
     }
 
-    _getValues () {
+    _getValues() {
       return LICENSES
     }
   }
 
   class FigurePanelComponentWithMetadata extends DefaultNodeComponent {
-    _getClassNames () {
+    _getClassNames() {
       return `sc-figure-metadata sc-default-node`
     }
 
-    _renderHeader ($$) {
+    _renderHeader($$) {
       const node = this.props.node;
       let header = $$('div').addClass('se-header');
       header.append(
@@ -9934,11 +9969,11 @@
     }
 
     // overriding this to get spawn a special editor for the content
-    _getPropertyEditorClass (name, value) {
+    _getPropertyEditorClass(name, value) {
       // skip 'label' here, as it is shown 'read-only' in the header instead
       if (name === 'label') {
         return null
-      // special editor to pick license type
+        // special editor to pick license type
       } else if (name === 'license') {
         return LicenseEditor
       } else if (name === 'metadata') {
@@ -9948,7 +9983,7 @@
       }
     }
 
-    _createPropertyModels () {
+    _createPropertyModels() {
       const api = this.context.api;
       const node = this.props.node;
       const doc = node.getDocument();
@@ -9963,7 +9998,7 @@
       })
     }
 
-    _showLabelForProperty (prop) {
+    _showLabelForProperty(prop) {
       // Don't render a label for content property to use up the full width
       if (prop === 'content') {
         return false
@@ -9975,22 +10010,22 @@
   // TODO: we need to rethink how we model labels
   // ATM, we have it in the schema, but we are using node state
   class LabelComponent extends substance.Component {
-    didMount () {
+    didMount() {
       this.context.editorState.addObserver(['document'], this.rerender, this, { stage: 'render', document: { path: [this.props.node.id] } });
     }
 
-    dispose () {
+    dispose() {
       this.context.editorState.removeObserver(this);
     }
 
-    render ($$) {
+    render($$) {
       const label = getLabel(this.props.node);
       return $$('div').addClass('sc-label').text(label)
     }
   }
 
   class FigurePanelComponent extends NodeComponent {
-    render ($$) {
+    render($$) {
       const mode = this._getMode();
       // different rendering when rendered as preview or in metadata view
       if (mode === PREVIEW_MODE) {
@@ -10002,11 +10037,11 @@
       }
     }
 
-    _getClassNames () {
+    _getClassNames() {
       return `sc-figure-panel`
     }
 
-    _renderManuscriptVersion ($$) {
+    _renderManuscriptVersion($$) {
       const mode = this._getMode();
       const node = this.props.node;
       const SectionLabel = this.getComponent('section-label');
@@ -10040,11 +10075,11 @@
       return el
     }
 
-    _renderContent ($$) {
+    _renderContent($$) {
       return this._renderValue($$, 'content').addClass('se-content')
     }
 
-    _renderPreviewVersion ($$) {
+    _renderPreviewVersion($$) {
       const node = this.props.node;
       // TODO: We could return the PreviewComponent directly.
       // However this yields an error we need to investigate.
@@ -10066,17 +10101,17 @@
       })).addClass('sc-figure-panel').attr('data-id', node.id)
     }
 
-    _renderMetadataVersion ($$) {
+    _renderMetadataVersion($$) {
       return $$(FigurePanelComponentWithMetadata, { node: this.props.node })
     }
 
-    _getMode () {
+    _getMode() {
       return this.props.mode || 'manuscript'
     }
   }
 
   class FootnoteComponent extends NodeComponent {
-    render ($$) {
+    render($$) {
       const mode = this.props.mode;
       if (mode === PREVIEW_MODE) {
         return this._renderPreviewVersion($$)
@@ -10095,7 +10130,7 @@
       return el
     }
 
-    _renderPreviewVersion ($$) {
+    _renderPreviewVersion($$) {
       let footnote = this.props.node;
       let el = $$('div').addClass('sc-footnote').attr('data-id', footnote.id);
 
@@ -10118,13 +10153,13 @@
 
   // TODO: do we need this anymore?
   class FootnoteEditor extends ValueComponent {
-    render ($$) {
+    render($$) {
       return $$('div').addClass('sc-table-footnotes-editor').append(
         this._renderFootnotes($$)
       )
     }
 
-    _renderFootnotes ($$) {
+    _renderFootnotes($$) {
       const model = this.props.model;
       let items = model.getItems();
       return items.map(item => $$(FootnoteComponent, { node: item }).ref(item.id))
@@ -10132,7 +10167,7 @@
   }
 
   class GraphicComponent extends NodeComponent {
-    render ($$) {
+    render($$) {
       const node = this.props.node;
       const urlResolver = this.context.urlResolver;
       let url = node.href;
@@ -10157,42 +10192,42 @@
       return el
     }
 
-    _renderError ($$, errorEl) {
+    _renderError($$, errorEl) {
       errorEl.append(
         this.getLabel('graphic-load-error')
       );
     }
 
-    _getClassNames () {
+    _getClassNames() {
       return 'sc-graphic'
     }
 
-    get tagName () {
+    get tagName() {
       return 'div'
     }
 
-    _onLoadError () {
+    _onLoadError() {
       this.extendState({ errored: true });
     }
   }
 
   class HeadingComponent extends TextNodeComponent {
-    didMount () {
+    didMount() {
       this.context.editorState.addObserver(['document'], this.rerender, this, {
         stage: 'render',
         document: { path: [this.props.node.id] }
       });
     }
 
-    dispose () {
+    dispose() {
       this.context.editorState.removeObserver(this);
     }
 
-    getClassNames () {
+    getClassNames() {
       return 'sc-heading sc-text-node'
     }
 
-    getTagName () {
+    getTagName() {
       return 'h' + this.props.node.level
     }
   }
@@ -10201,7 +10236,7 @@
    * Tool to edit the markup of an InlineFormula.
    */
   class InlineFormulaEditor extends substance.Component {
-    render ($$) {
+    render($$) {
       const TextPropertyEditor = this.getComponent('text-property-editor');
       const node = this.props.node;
       let el = $$('div').addClass('sc-inline-formula-editor').addClass('sm-horizontal-layout');
@@ -10222,7 +10257,7 @@
     // ATTENTION: this is very similar to BlockFormulaComponent
     // but unfortunately also substantially different
     // e.g. has no blocker, elements are spans, error message as tooltip
-    render ($$) {
+    render($$) {
       const node = this.props.node;
       let el = super.render($$)
         .addClass('sc-inline-formula');
@@ -10243,19 +10278,19 @@
       return el
     }
 
-    _getEditorClass () {
+    _getEditorClass() {
       return InlineFormulaEditor
     }
   }
 
   class InlineGraphicComponent extends GraphicComponent {
-    get tagName () { return 'span' }
+    get tagName() { return 'span' }
 
-    _getClassNames () {
+    _getClassNames() {
       return 'sc-inline-graphic'
     }
 
-    _renderError ($$, errorEl) {
+    _renderError($$, errorEl) {
       errorEl.attr('title', this.getLabel('graphic-load-error'));
     }
   }
@@ -10263,7 +10298,7 @@
   class UploadTool extends Tool {
     // In addition to the regular button a file input is rendered
     // which is used to trigger the browser's file dialog.
-    render ($$) {
+    render($$) {
       let el = super.render($$);
 
       const isMultiple = this.canUploadMultiple;
@@ -10287,30 +10322,30 @@
       return el
     }
 
-    getClassNames () {
+    getClassNames() {
       return 'sc-upload-tool'
     }
 
-    getFileType () {
+    getFileType() {
       throw new Error('This method is abstract')
     }
 
-    get canUploadMultiple () {
+    get canUploadMultiple() {
       return false
     }
 
-    get doesAcceptAllFileTypes () {
+    get doesAcceptAllFileTypes() {
       return false
     }
 
-    _onClick (e) {
+    _onClick(e) {
       e.stopPropagation();
       e.preventDefault();
       this.refs.input.el.val(null);
       this.refs.input.el.click();
     }
 
-    onFileSelect (e) {
+    onFileSelect(e) {
       let files = e.currentTarget.files;
       this.executeCommand({
         files: Array.prototype.slice.call(files)
@@ -10320,51 +10355,51 @@
 
   // This is a base class for tools that upload a file
   class UploadSingleImageTool extends UploadTool {
-    getFileType () {
+    getFileType() {
       return 'image/*'
     }
 
-    get canUploadMultiple () {
+    get canUploadMultiple() {
       return false
     }
   }
 
   class InsertFigurePanelTool extends UploadSingleImageTool {
-    getClassNames () {
+    getClassNames() {
       return 'sc-insert-figure-panel-tool sc-upload-tool sc-tool'
     }
   }
 
   class InsertFigureTool extends UploadTool {
-    getClassNames () {
+    getClassNames() {
       return 'sc-insert-figure-tool sc-upload-tool sc-tool'
     }
 
-    getFileType () {
+    getFileType() {
       return 'image/*'
     }
 
-    get canUploadMultiple () {
+    get canUploadMultiple() {
       return true
     }
   }
 
   class InsertInlineGraphicTool extends UploadTool {
-    getClassNames () {
+    getClassNames() {
       return 'sc-insert-inline-graphic-tool sc-upload-tool sc-tool'
     }
 
-    getFileType () {
+    getFileType() {
       return 'image/*'
     }
   }
 
   class InsertTableTool extends Tool {
-    getClassNames () {
+    getClassNames() {
       return 'sc-insert-table-tool sc-tool'
     }
 
-    onClick () {
+    onClick() {
       const rows = 3;
       const columns = 5;
       this.executeCommand({
@@ -10375,13 +10410,13 @@
   }
 
   class ItalicComponent extends substance.AnnotationComponent {
-    getTagName () {
+    getTagName() {
       return 'i'
     }
   }
 
   class ListComponent extends NodeComponent {
-    render ($$) {
+    render($$) {
       const ListItemComponent = this.getComponent('list-item');
       let node = this.props.node;
       // TODO: is it ok to rely on Node API here?
@@ -10400,11 +10435,11 @@
     }
 
     // we need this ATM to prevent this being wrapped into an isolated node (see ContainerEditor._renderNode())
-    get _isCustomNodeComponent () { return true }
+    get _isCustomNodeComponent() { return true }
   }
 
   class ListItemComponent extends NodeComponent {
-    render ($$) {
+    render($$) {
       const node = this.props.node;
       const doc = node.getDocument();
       const path = node.getPath();
@@ -10427,15 +10462,15 @@
   }
 
   class ManuscriptSection extends substance.Component {
-    didMount () {
+    didMount() {
       addModelObserver(this.props.model, this._onModelUpdate, this);
     }
 
-    dispose () {
+    dispose() {
       removeModelObserver(this);
     }
 
-    render ($$) {
+    render($$) {
       const { model, name, label, children, hideWhenEmpty } = this.props;
       const SectionLabel = this.getComponent('section-label');
 
@@ -10456,7 +10491,7 @@
       return el
     }
 
-    _onModelUpdate () {
+    _onModelUpdate() {
       if (this.props.hideWhenEmpty) {
         this.rerender();
       }
@@ -10464,7 +10499,7 @@
   }
 
   class ManuscriptComponent extends substance.Component {
-    render ($$) {
+    render($$) {
       const manuscript = this.props.model;
       const AuthorsListComponent = this.getComponent('authors-list');
       const ReferenceListComponent = this.getComponent('reference-list');
@@ -10576,7 +10611,7 @@
   // TODO: this needs to be redesigned
   // TODO: we should follow the same approach as in Metadata, i.e. having a model which is a list of sections
   class ManuscriptTOC extends substance.Component {
-    render ($$) {
+    render($$) {
       let el = $$('div').addClass('sc-toc');
       let manuscriptModel = this.props.model;
 
@@ -10585,19 +10620,19 @@
         .ref('tocEntries')
         .on('click', substance.domHelpers.stop);
 
-    /*  tocEntries.append(
-        $$(SectionTOCEntry, {
-          label: this.getLabel('title'),
-          section: 'title'
-        })
-      )
-
-      tocEntries.append(
-        $$(SectionTOCEntry, {
-          label: this.getLabel('abstract'),
-          section: 'abstract'
-        })
-      )*/
+      /*  tocEntries.append(
+          $$(SectionTOCEntry, {
+            label: this.getLabel('title'),
+            section: 'title'
+          })
+        )
+  
+        tocEntries.append(
+          $$(SectionTOCEntry, {
+            label: this.getLabel('abstract'),
+            section: 'abstract'
+          })
+        )*/
 
       tocEntries.append(
         $$(BodyTOCEntry, {
@@ -10627,13 +10662,13 @@
       return el
     }
 
-    onTOCUpdated () {
+    onTOCUpdated() {
       this.rerender();
     }
   }
 
   class BodyTOCEntry extends ValueComponent {
-    render ($$) {
+    render($$) {
       let items = this.props.model.getItems();
       let headings = items.filter(node => node.type === 'heading');
       return $$('div').addClass('sc-toc-entry').append(
@@ -10647,7 +10682,7 @@
       )
     }
 
-    _onClick (event) {
+    _onClick(event) {
       let target = substance.DefaultDOMElement.wrap(event.currentTarget);
       let nodeId = target.attr('data-id');
       event.preventDefault();
@@ -10657,16 +10692,16 @@
   }
 
   class TOCHeadingEntry extends substance.Component {
-    didMount () {
+    didMount() {
       this.context.editorState.addObserver(['document'], this.rerender, this, {
         stage: 'render',
         document: { path: [this.props.node.id] }
       });
     }
-    dispose () {
+    dispose() {
       this.context.editorState.removeObserver(this);
     }
-    render ($$) {
+    render($$) {
       const api = this.context.api;
       let heading = this.props.node;
       return $$('div').append(
@@ -10677,7 +10712,7 @@
 
   // only visible when collection not empty
   class DynamicTOCEntry extends ValueComponent {
-    render ($$) {
+    render($$) {
       let { label, model, section } = this.props;
       let el = $$('div')
         .addClass('sc-toc-entry sm-level-1')
@@ -10690,7 +10725,7 @@
       return el
     }
 
-    _onClick (event) {
+    _onClick(event) {
       event.preventDefault();
       event.stopPropagation();
       this.send('scrollTo', { section: this.props.section });
@@ -10698,20 +10733,20 @@
   }
 
   class ManuscriptEditor extends EditorPanel {
-    _initialize (props) {
+    _initialize(props) {
       super._initialize(props);
 
       this._model = this.context.api.getArticleModel();
     }
 
-    getActionHandlers () {
+    getActionHandlers() {
       return {
         'acquireOverlay': this._acquireOverlay,
         'releaseOverlay': this._releaseOverlay
       }
     }
 
-    didMount () {
+    didMount() {
       super.didMount();
 
       this._showHideTOC();
@@ -10721,20 +10756,20 @@
       this.context.editorSession.setRootComponent(this._getContentPanel());
     }
 
-    didUpdate () {
+    didUpdate() {
       super.didUpdate();
 
       this._showHideTOC();
       this._restoreViewport();
     }
 
-    dispose () {
+    dispose() {
       super.dispose();
 
       substance.DefaultDOMElement.getBrowserWindow().off(this);
     }
 
-    render ($$) {
+    render($$) {
       let el = $$('div').addClass('sc-manuscript-editor')
         // sharing styles with sc-article-reader
         .addClass('sc-manuscript-view');
@@ -10746,7 +10781,7 @@
       return el
     }
 
-    _renderMainSection ($$) {
+    _renderMainSection($$) {
       const appState = this.context.editorState;
       let mainSection = $$('div').addClass('se-main-section');
       mainSection.append(
@@ -10754,7 +10789,7 @@
         $$('div').addClass('se-content-section').append(
           this._renderTOCPane($$),
           this._renderContentPanel($$)
-        // TODO: this component has always the same structure and should preserve all elements, event without ref
+          // TODO: this component has always the same structure and should preserve all elements, event without ref
         ).ref('contentSection'),
         this._renderFooterPane($$)
       );
@@ -10768,7 +10803,7 @@
       return mainSection
     }
 
-    _renderTOCPane ($$) {
+    _renderTOCPane($$) {
       let el = $$('div').addClass('se-toc-pane').ref('tocPane');
       el.append(
         $$('div').addClass('se-context-pane-content').append(
@@ -10778,7 +10813,7 @@
       return el
     }
 
-    _renderToolbar ($$) {
+    _renderToolbar($$) {
       const Toolbar = this.getComponent('toolbar');
       const configurator = this._getConfigurator();
       const items = configurator.getToolPanel('toolbar', true);
@@ -10790,13 +10825,13 @@
       )
     }
 
-    _renderContentPanel ($$) {
+    _renderContentPanel($$) {
       const ScrollPane = this.getComponent('scroll-pane');
       const ManuscriptComponent = this.getComponent('manuscript');
       let contentPanel = $$(ScrollPane, {
         contextMenu: 'custom',
         scrollbarPosition: 'right'
-      // NOTE: this ref is needed to access the root element of the editable content
+        // NOTE: this ref is needed to access the root element of the editable content
       }).ref('contentPanel');
 
       contentPanel.append(
@@ -10810,7 +10845,7 @@
       return contentPanel
     }
 
-    _renderMainOverlay ($$) {
+    _renderMainOverlay($$) {
       const panelProvider = () => this.refs.contentPanel;
       return $$(OverlayCanvas, {
         theme: this._getTheme(),
@@ -10818,7 +10853,7 @@
       }).ref('overlay')
     }
 
-    _renderContextMenu ($$) {
+    _renderContextMenu($$) {
       const configurator = this._getConfigurator();
       const ContextMenu = this.getComponent('context-menu');
       const items = configurator.getToolPanel('context-menu');
@@ -10829,7 +10864,7 @@
       })
     }
 
-    _renderFooterPane ($$) {
+    _renderFooterPane($$) {
       const FindAndReplaceDialog = this.getComponent('find-and-replace-dialog');
       let el = $$('div').addClass('se-footer-pane');
       el.append(
@@ -10841,7 +10876,7 @@
       return el
     }
 
-    _renderContextPane ($$) {
+    _renderContextPane($$) {
       // TODO: we need to revisit this
       // We have introduced this to be able to inject a shared context panel
       // in Stencila. However, ATM we try to keep the component
@@ -10857,17 +10892,17 @@
       }
     }
 
-    _getContentPanel () {
+    _getContentPanel() {
       return this.refs.contentPanel
     }
 
-    getViewport () {
+    getViewport() {
       return {
         x: this.refs.contentPanel.getScrollPosition()
       }
     }
 
-    _showHideTOC () {
+    _showHideTOC() {
       let contentSectionWidth = this.refs.contentSection.el.width;
       if (contentSectionWidth < 960) {
         this.el.addClass('sm-compact');
@@ -10876,17 +10911,17 @@
       }
     }
 
-    _acquireOverlay (...args) {
+    _acquireOverlay(...args) {
       this.refs.overlay.acquireOverlay(...args);
     }
 
-    _releaseOverlay (...args) {
+    _releaseOverlay(...args) {
       this.refs.overlay.releaseOverlay(...args);
     }
   }
 
   class MetadataFieldComponent extends NodeComponent {
-    render ($$) {
+    render($$) {
       let el = $$('div').addClass('sc-metadata-field');
       el.append(
         this._renderValue($$, 'name', { placeholder: this.getLabel('enter-metadata-field-name') }).addClass('se-field-name'),
@@ -10897,15 +10932,15 @@
   }
 
   class ModelPreviewComponent extends substance.Component {
-    didMount () {
+    didMount() {
       this.context.editorState.addObserver(['document'], this._onDocumentChange, this, { stage: 'render' });
     }
 
-    dispose () {
+    dispose() {
       this.context.editorState.removeObserver(this);
     }
 
-    render ($$) {
+    render($$) {
       let node = this.props.node;
       let el = $$('div').addClass('sc-model-preview');
       el.html(
@@ -10917,13 +10952,13 @@
       return el
     }
 
-    _onDocumentChange (change) {
+    _onDocumentChange(change) {
       ifNodeOrRelatedHasChanged(this.props.node, change, () => this.rerender());
     }
   }
 
   class OpenFigurePanelImageTool extends Tool {
-    render ($$) {
+    render($$) {
       let el = super.render($$);
       el.append(
         $$('a').ref('link')
@@ -10934,17 +10969,17 @@
       return el
     }
 
-    getClassNames () {
+    getClassNames() {
       return 'sc-open-figure-panel-source-tool sc-tool'
     }
 
-    _onClick (e) {
+    _onClick(e) {
       e.stopPropagation();
       e.preventDefault();
       this._generateLink();
     }
 
-    _generateLink () {
+    _generateLink() {
       const urlResolver = this.context.urlResolver;
       const editorSession = this.context.editorSession;
       const selectionState = editorSession.getSelectionState();
@@ -10967,19 +11002,19 @@
   }
 
   class ParagraphComponent extends TextNodeComponent {
-    getClassNames () {
+    getClassNames() {
       return 'sc-paragraph sc-text-node'
     }
   }
 
   // ATTENTION: this is displays all RefContribs of a Reference in an 'in-place' style i.e. like a little table
   class InplaceRefContribsEditor extends ValueComponent {
-    getActionHandlers () {
+    getActionHandlers() {
       return {
         removeContrib: this._removeContrib
       }
     }
-    render ($$) {
+    render($$) {
       const Button = this.getComponent('button');
 
       let el = $$('div').addClass('sc-inplace-ref-contrib-editor');
@@ -10993,28 +11028,28 @@
       return el
     }
 
-    _renderRefContribs ($$) {
+    _renderRefContribs($$) {
       const model = this.props.model;
       let items = model.getItems();
       return items.map(item => this._renderRefContrib($$, item))
     }
 
-    _renderRefContrib ($$, refContrib) {
+    _renderRefContrib($$, refContrib) {
       let id = refContrib.id;
       return $$(InplaceRefContribEditor, { node: refContrib }).ref(id)
     }
 
-    _addContrib () {
+    _addContrib() {
       this.props.model.addItem({ type: 'ref-contrib' });
     }
 
-    _removeContrib (contrib) {
+    _removeContrib(contrib) {
       this.props.model.removeItem(contrib);
     }
   }
 
   class InplaceRefContribEditor extends NodeComponent {
-    render ($$) {
+    render($$) {
       const node = this.props.node;
       const Button = this.getComponent('button');
       let el = $$('div').addClass('sc-inplace-ref-contrib-editor');
@@ -11028,7 +11063,7 @@
           }).addClass('sm-given-names'),
           $$(Button, {
             icon: 'remove'
-          // TODO: do we need this ref?
+            // TODO: do we need this ref?
           }).ref('remove-button').addClass('se-remove-value')
             .on('click', this._onRemove)
         )
@@ -11036,13 +11071,13 @@
       return el
     }
 
-    _onRemove () {
+    _onRemove() {
       this.send('removeContrib', this.props.node);
     }
   }
 
   class ReferenceComponent extends NodeComponent {
-    render ($$) {
+    render($$) {
       let mode = this.props.mode;
       let node = this.props.node;
       let label = this._getReferenceLabel();
@@ -11068,17 +11103,17 @@
       }
     }
 
-    _getReferenceLabel () {
+    _getReferenceLabel() {
       return getLabel(this.props.node) || '?'
     }
   }
 
   class ReferenceMetadataComponent extends DefaultNodeComponent {
-    _getClassNames () {
+    _getClassNames() {
       return 'sc-reference sm-metadata'
     }
     // using a special inplace property editor for 'ref-contrib's
-    _getPropertyEditorClass (name, value) {
+    _getPropertyEditorClass(name, value) {
       if (value.hasTargetType('ref-contrib')) {
         return InplaceRefContribsEditor
       } else {
@@ -11088,7 +11123,7 @@
   }
 
   class ReferenceListComponent extends substance.CustomSurface {
-    didMount () {
+    didMount() {
       super.didMount();
 
       const appState = this.context.editorState;
@@ -11098,20 +11133,20 @@
       appState.addObserver(['selection'], this.rerender, this, { stage: 'render' });
     }
 
-    dispose () {
+    dispose() {
       super.dispose();
       // TODO: as we have a node for references now, we should turn this into a NodeComponent instead
       this.context.editorState.removeObserver(this);
     }
 
-    getInitialState () {
+    getInitialState() {
       let bibliography = this._getBibliography();
       return {
         hidden: (bibliography.length === 0)
       }
     }
 
-    render ($$) {
+    render($$) {
       const sel = this.context.editorState.selection;
       const bibliography = this._getBibliography();
 
@@ -11134,11 +11169,11 @@
       return el
     }
 
-    _getCustomResourceId () {
+    _getCustomResourceId() {
       return 'reference-list'
     }
 
-    _getBibliography () {
+    _getBibliography() {
       let references = this.props.model.getItems();
       references.sort((a, b) => {
         return getPos(a) - getPos(b)
@@ -11148,36 +11183,36 @@
   }
 
   class ReferenceDisplay extends NodeComponent {
-    render ($$) {
+    render($$) {
       let el = renderNode($$, this, this.props.node);
       el.on('mousedown', this._onMousedown)
         .on('click', this._onClick);
       return el
     }
 
-    _onMousedown (e) {
+    _onMousedown(e) {
       e.stopPropagation();
       if (e.button === 2) {
         this._select();
       }
     }
 
-    _onClick (e) {
+    _onClick(e) {
       e.stopPropagation();
       this._select();
     }
 
-    _select () {
+    _select() {
       this.context.api.selectEntity(this.props.node.id);
     }
   }
 
   class ReferenceUploadComponent extends FileUploadComponent {
-    get acceptedFiles () {
+    get acceptedFiles() {
       return 'application/json'
     }
 
-    renderErrorsList ($$) {
+    renderErrorsList($$) {
       const dois = this.state.error.dois;
       const errorsList = $$('ul').addClass('se-error-list');
       errorsList.append(
@@ -11189,7 +11224,7 @@
       return errorsList
     }
 
-    handleUploadedFiles (files) {
+    handleUploadedFiles(files) {
       Object.values(files).forEach(file => {
         const reader = new window.FileReader();
         reader.onload = this._onFileLoad.bind(this);
@@ -11197,7 +11232,7 @@
       });
     }
 
-    _onFileLoad (e) {
+    _onFileLoad(e) {
       const res = e.target.result;
       if (res) {
         let conversionErrors = [];
@@ -11225,26 +11260,26 @@
   }
 
   class ReplaceFigurePanelTool extends UploadSingleImageTool {
-    getClassNames () {
+    getClassNames() {
       return 'sc-replace-figure-panel-tool sc-upload-tool sc-tool'
     }
   }
 
   class ReplaceSupplementaryFileTool extends UploadTool {
-    getClassNames () {
+    getClassNames() {
       return 'sc-replace-supplementary-file-tool sc-upload-tool sc-tool'
     }
-    get doesAcceptAllFileTypes () {
+    get doesAcceptAllFileTypes() {
       return true
     }
 
-    get canUploadMultiple () {
+    get canUploadMultiple() {
       return false
     }
   }
 
   class SectionLabel extends substance.Component {
-    render ($$) {
+    render($$) {
       const label = this.props.label;
       return $$('div').addClass('sc-section-label')
         .append(this.getLabel(label))
@@ -11252,19 +11287,19 @@
   }
 
   class SubscriptComponent extends substance.AnnotationComponent {
-    getTagName () {
+    getTagName() {
       return 'sub'
     }
   }
 
   class SuperscriptComponent extends substance.AnnotationComponent {
-    getTagName () {
+    getTagName() {
       return 'sup'
     }
   }
 
   class SupplementaryFileComponent extends NodeComponent {
-    render ($$) {
+    render($$) {
       const mode = this._getMode();
       // different rendering when rendered as preview or in metadata view
       if (mode === PREVIEW_MODE) {
@@ -11297,7 +11332,7 @@
       return el
     }
 
-    _renderPreviewVersion ($$) {
+    _renderPreviewVersion($$) {
       const node = this.props.node;
       let label = getLabel(node);
       // TODO: PreviewComponent should work with a model
@@ -11309,29 +11344,29 @@
       }))
     }
 
-    _getMode () {
+    _getMode() {
       return this.props.mode || 'manuscript'
     }
   }
 
   class TableCellEditor extends TextPropertyEditorNew {
-    _getClassNames () {
+    _getClassNames() {
       return 'sc-table-cell-editor ' + super._getClassNames()
     }
 
-    _handleEscapeKey (event) {
+    _handleEscapeKey(event) {
       this.__handleKey(event, 'escape');
     }
 
-    _handleEnterKey (event) {
+    _handleEnterKey(event) {
       this.__handleKey(event, 'enter');
     }
 
-    _handleTabKey (event) {
+    _handleTabKey(event) {
       this.__handleKey(event, 'tab');
     }
 
-    __handleKey (event, name) {
+    __handleKey(event, name) {
       event.stopPropagation();
       event.preventDefault();
       this.el.emit(name, {
@@ -11345,7 +11380,7 @@
   }
 
   class TableCellComponent extends NodeComponent {
-    render ($$) {
+    render($$) {
       const cell = this.props.node;
       let el = $$(cell.heading ? 'th' : 'td');
       el.addClass('sc-table-cell');
@@ -11370,13 +11405,13 @@
       return el
     }
 
-    getId () {
+    getId() {
       return this.getAttribute('data-id')
     }
   }
 
   class TableContextMenu extends ToolPanel {
-    render ($$) {
+    render($$) {
       let el = $$('div').addClass('sc-table-context-menu sc-context-menu');
       el.append(
         $$('div').append(
@@ -11388,14 +11423,14 @@
   }
 
   class TableComponent extends substance.CustomSurface {
-    constructor (...args) {
+    constructor(...args) {
       super(...args);
 
       this._selectionData = {};
       this._clipboard = new substance.Clipboard();
     }
 
-    getChildContext () {
+    getChildContext() {
       return {
         surface: this,
         parentSurfaceId: this.getId(),
@@ -11405,11 +11440,11 @@
       }
     }
 
-    shouldRerender (newProps) {
+    shouldRerender(newProps) {
       return (newProps.node !== this.props.node || newProps.disabled !== this.props.disabled)
     }
 
-    didMount () {
+    didMount() {
       super.didMount();
 
       this._tableSha = this.props.node._getSha();
@@ -11421,14 +11456,14 @@
       this._positionSelection(this._getSelectionData());
     }
 
-    dispose () {
+    dispose() {
       super.dispose();
 
       const appState = this.context.editorState;
       appState.off(this);
     }
 
-    render ($$) {
+    render($$) {
       let el = $$('div').addClass('sc-table');
       el.on('mousedown', this._onMousedown)
         .on('mouseup', this._onMouseup)
@@ -11441,7 +11476,7 @@
       return el
     }
 
-    _renderTable ($$) {
+    _renderTable($$) {
       let table = $$('table').ref('table');
       let node = this.props.node;
       let matrix = node.getCellMatrix();
@@ -11468,7 +11503,7 @@
       return table
     }
 
-    _renderKeyTrap ($$) {
+    _renderKeyTrap($$) {
       return $$('textarea').addClass('se-keytrap').ref('keytrap')
         .css({ position: 'absolute', width: 0, height: 0, opacity: 0 })
         .on('keydown', this._onKeydown)
@@ -11478,7 +11513,7 @@
         .on('cut', this._onCut)
     }
 
-    _renderUnclickableOverlays ($$) {
+    _renderUnclickableOverlays($$) {
       let el = $$('div').addClass('se-unclickable-overlays');
       el.append(
         this._renderSelectionOverlay($$)
@@ -11489,7 +11524,7 @@
       return el
     }
 
-    _renderSelectionOverlay ($$) {
+    _renderSelectionOverlay($$) {
       let el = $$('div').addClass('se-selection-overlay');
       el.append(
         $$('div').addClass('se-selection-anchor').ref('selAnchor').css('visibility', 'hidden'),
@@ -11498,7 +11533,7 @@
       return el
     }
 
-    _renderContextMenu ($$) {
+    _renderContextMenu($$) {
       const config = this.context.config;
       let contextMenu;
       const items = config.getToolPanel('table-context-menu');
@@ -11516,7 +11551,7 @@
       return contextMenu
     }
 
-    _onDocumentChange () {
+    _onDocumentChange() {
       const table = this.props.node;
       // Note: using a simplified way to detect when a table
       // has changed structurally
@@ -11528,7 +11563,7 @@
       }
     }
 
-    _onSelectionChange () {
+    _onSelectionChange() {
       const doc = this.context.editorSession.getDocument();
       const sel = this.context.editorState.selection;
       const self = this;
@@ -11565,7 +11600,7 @@
       }
       this._hideContextMenu();
 
-      function _disableActiveCell () {
+      function _disableActiveCell() {
         const activeCellId = self._activeCell;
         if (activeCellId) {
           let cellEditor = self.refs[activeCellId];
@@ -11578,7 +11613,7 @@
       }
     }
 
-    _onMousedown (e) {
+    _onMousedown(e) {
       // console.log('TableComponent._onMousedown()')
       e.stopPropagation();
       // TODO: do not update the selection if right-clicked and already having a selection
@@ -11629,7 +11664,7 @@
       }
     }
 
-    _onMouseup (e) {
+    _onMouseup(e) {
       e.stopPropagation();
       if (this._isSelecting) {
         e.preventDefault();
@@ -11637,7 +11672,7 @@
       }
     }
 
-    _onMousemove (e) {
+    _onMousemove(e) {
       if (this._isSelecting) {
         const selData = this._selectionData;
         let cellId = this._mapClientXYToCellId(e.clientX, e.clientY);
@@ -11648,13 +11683,13 @@
       }
     }
 
-    _onDblclick (e) {
+    _onDblclick(e) {
       e.preventDefault();
       e.stopPropagation();
       this._requestEditCell();
     }
 
-    _onKeydown (e) {
+    _onKeydown(e) {
       let handled = false;
       switch (e.keyCode) {
         case substance.keys.LEFT:
@@ -11690,7 +11725,7 @@
           break
         }
         default:
-          //
+        //
       }
       // let an optional keyboard manager handle the key
       if (!handled) {
@@ -11708,14 +11743,14 @@
     /*
       Type into cell (replacing the existing content)
     */
-    _onInput () {
+    _onInput() {
       const value = this.refs.keytrap.val();
       this._requestEditCell(value);
       // Clear keytrap after sending an action
       this.refs.keytrap.val('');
     }
 
-    _onCellEnter (e) {
+    _onCellEnter(e) {
       e.stopPropagation();
       e.preventDefault();
       let cellEl = substance.DefaultDOMElement.wrap(e.target).getParent();
@@ -11727,7 +11762,7 @@
       }
     }
 
-    _onCellTab (e) {
+    _onCellTab(e) {
       e.stopPropagation();
       e.preventDefault();
       let cellEl = substance.DefaultDOMElement.wrap(e.target).getParent();
@@ -11735,7 +11770,7 @@
       this._nav(0, 1, false, { anchorCellId: cellId, focusCellId: cellId });
     }
 
-    _onCellEscape (e) {
+    _onCellEscape(e) {
       e.stopPropagation();
       e.preventDefault();
       let cellEl = substance.DefaultDOMElement.wrap(e.target).getParent();
@@ -11743,21 +11778,21 @@
       this._requestSelectionChange(this._createTableSelection({ anchorCellId: cellId, focusCellId: cellId }));
     }
 
-    _onCopy (e) {
+    _onCopy(e) {
       e.preventDefault();
       e.stopPropagation();
       let clipboardData = e.clipboardData;
       this._clipboard.copy(clipboardData, this.context);
     }
 
-    _onCut (e) {
+    _onCut(e) {
       e.preventDefault();
       e.stopPropagation();
       let clipboardData = e.clipboardData;
       this._clipboard.cut(clipboardData, this.context);
     }
 
-    _onPaste (e) {
+    _onPaste(e) {
       e.preventDefault();
       e.stopPropagation();
       let clipboardData = e.clipboardData;
@@ -11765,30 +11800,30 @@
       this._clipboard.paste(clipboardData, this.context);
     }
 
-    _onContextMenu (e) {
+    _onContextMenu(e) {
       e.preventDefault();
       e.stopPropagation();
       this._showContextMenu(e);
     }
 
-    _onContextMenuItemClick (e) {
+    _onContextMenuItemClick(e) {
       e.preventDefault();
       e.stopPropagation();
       this._hideContextMenu();
     }
 
-    _getSelection () {
+    _getSelection() {
       return this.context.editorSession.getSelection()
     }
 
-    _getSelectionData () {
+    _getSelectionData() {
       let sel = this._getSelection();
       if (sel && sel.surfaceId === this.getId()) {
         return sel.data
       }
     }
 
-    _requestEditCell (initialValue) {
+    _requestEditCell(initialValue) {
       let selData = this._getSelectionData();
       if (selData) {
         // type over cell
@@ -11814,12 +11849,12 @@
       }
     }
 
-    _requestSelectionChange (newSel) {
+    _requestSelectionChange(newSel) {
       // console.log('requesting selection change', newSel)
       this.context.editorSession.setSelection(newSel);
     }
 
-    _getClickTargetForEvent (e) {
+    _getClickTargetForEvent(e) {
       let target = substance.DefaultDOMElement.wrap(e.target);
       let cellEl = substance.domHelpers.findParent(target, 'td,th');
       if (cellEl) {
@@ -11828,13 +11863,13 @@
       }
     }
 
-    _getRowCol (cellEl) {
+    _getRowCol(cellEl) {
       let rowIdx = parseInt(cellEl.getAttribute('data-row-idx'), 10);
       let colIdx = parseInt(cellEl.getAttribute('data-col-idx'), 10);
       return [rowIdx, colIdx]
     }
 
-    _mapClientXYToCellId (x, y) {
+    _mapClientXYToCellId(x, y) {
       // TODO: this could be optimized using bisect search
       let cellEls = this.refs.table.el.findAll('th,td');
       for (let i = 0; i < cellEls.length; i++) {
@@ -11846,7 +11881,7 @@
       }
     }
 
-    _nav (dr, dc, expand, selData) {
+    _nav(dr, dc, expand, selData) {
       selData = selData || this._getSelectionData();
       if (selData) {
         let newSelData = computeUpdatedSelection(this.props.node, selData, dr, dc, expand);
@@ -11854,18 +11889,18 @@
       }
     }
 
-    _getCustomResourceId () {
+    _getCustomResourceId() {
       return this.props.node.id
     }
 
-    _clearSelection () {
+    _clearSelection() {
       let selData = this._getSelectionData();
       if (selData) {
         this._getTableApi().deleteSelection();
       }
     }
 
-    rerenderDOMSelection () {
+    rerenderDOMSelection() {
       // console.log('SheetComponent.rerenderDOMSelection()')
       this._positionSelection(this._getSelectionData());
       // // put the native focus into the keytrap so that we
@@ -11873,7 +11908,7 @@
       this.refs.keytrap.el.focus({ preventScroll: true });
     }
 
-    _positionSelection (selData, focused) {
+    _positionSelection(selData, focused) {
       // TODO: find a better criteria for integrity checking
       if (!selData) {
         this._hideSelection();
@@ -11900,23 +11935,23 @@
       }
     }
 
-    _getActualCellComp (cellId) {
+    _getActualCellComp(cellId) {
       let table = this.props.node;
       let cell = table.get(cellId);
       if (cell.shadowed) cell = cell.masterCell;
       return this.refs[cell.id]
     }
 
-    _hideSelection () {
+    _hideSelection() {
       this.refs.selAnchor.css('visibility', 'hidden');
       this.refs.selRange.css('visibility', 'hidden');
     }
 
-    _hideContextMenu () {
+    _hideContextMenu() {
       this.refs.contextMenu.addClass('sm-hidden');
     }
 
-    _showContextMenu (e) {
+    _showContextMenu(e) {
       let contextMenu = this.refs.contextMenu;
       let offset = this.el.getOffset();
       contextMenu.css({
@@ -11927,7 +11962,7 @@
       contextMenu.removeClass('sm-hidden');
     }
 
-    _getStylesForRectangle (rect) {
+    _getStylesForRectangle(rect) {
       let styles = { visibility: 'hidden' };
       if (rect) {
         Object.assign(styles, rect);
@@ -11939,37 +11974,37 @@
       return styles
     }
 
-    _createTableSelection (selData) {
+    _createTableSelection(selData) {
       let tableId = this.props.node.id;
       let surfaceId = this.getId();
       let sel = createTableSelection(tableId, selData, surfaceId);
       return sel
     }
 
-    _getTableApi () {
+    _getTableApi() {
       return this.context.api.getTableAPI()
     }
 
-    _prevent (event) {
+    _prevent(event) {
       event.stopPropagation();
       event.preventDefault();
     }
   }
 
-  function _getCellId (cellEl) {
+  function _getCellId(cellEl) {
     return substance.Component.unwrap(cellEl).getId()
   }
 
   class TableFigureComponentWithMetadata extends FigurePanelComponentWithMetadata {
-    _getClassNames () {
+    _getClassNames() {
       return `sc-table-figure-metadata`
     }
 
-    _getPropertyEditorClass (name, value) {
+    _getPropertyEditorClass(name, value) {
       // skip 'label' here, as it is shown 'read-only' in the header instead
       if (name === 'label') {
         return null
-      // special editor to pick license type
+        // special editor to pick license type
       } else if (name === 'license') {
         return LicenseEditor
       } else if (name === 'footnotes') {
@@ -11985,11 +12020,11 @@
    * Additionally it can contain footnotes.
    */
   class TableFigureComponent extends FigurePanelComponent {
-    _getClassNames () {
+    _getClassNames() {
       return `sc-table-figure`
     }
 
-    _renderManuscriptVersion ($$) {
+    _renderManuscriptVersion($$) {
       const mode = this._getMode();
       const node = this.props.node;
       const SectionLabel = this.getComponent('section-label');
@@ -12022,13 +12057,13 @@
       return el
     }
 
-    _renderMetadataVersion ($$) {
+    _renderMetadataVersion($$) {
       return $$(TableFigureComponentWithMetadata, { node: this.props.node }).ref('metadata')
     }
   }
 
   class UnsupportedInlineNodeComponent extends substance.Component {
-    render ($$) {
+    render($$) {
       const node = this.props.node;
       let data;
       if (node._isXMLNode) {
@@ -12049,13 +12084,13 @@
   }
 
   class UnsupportedNodeComponent extends IsolatedNodeComponentNew {
-    _getContentClass () {
+    _getContentClass() {
       return UnsupportedContentComponent
     }
   }
 
   class UnsupportedContentComponent extends substance.Component {
-    render ($$) {
+    render($$) {
       const node = this.props.node;
       let data;
       if (node._isXMLNode) {
@@ -12077,7 +12112,7 @@
   }
 
   class XrefEditor extends NodeComponent {
-    render ($$) {
+    render($$) {
       const targets = this._getAvailableTargets();
       let el = $$('div').addClass('sc-edit-xref-tool');
       // ATTENTION the targets are not models or nodes, but entries
@@ -12094,7 +12129,7 @@
       return el
     }
 
-    _renderOption ($$, target, selected) {
+    _renderOption($$, target, selected) {
       let optionEl = $$('div').addClass('se-option').append(
         renderNode($$, this, target, {
           mode: PREVIEW_MODE
@@ -12106,16 +12141,16 @@
       return optionEl
     }
 
-    _getNode () {
+    _getNode() {
       return this.props.node
     }
 
-    _getAvailableTargets () {
+    _getAvailableTargets() {
       let node = this._getNode();
       return this.context.api._getAvailableXrefTargets(node)
     }
 
-    _toggleTarget (targetNodeId, e) {
+    _toggleTarget(targetNodeId, e) {
       // Make sure we don't follow external links
       e.preventDefault();
       e.stopPropagation();
@@ -12126,7 +12161,7 @@
   }
 
   class XrefComponent extends EditableInlineNodeComponent {
-    render ($$) {
+    render($$) {
       let node = this.props.node;
       let refType = node.refType;
       let label = getXrefLabel(node);
@@ -12141,17 +12176,17 @@
       return el
     }
 
-    _getEditorClass () {
+    _getEditorClass() {
       return XrefEditor
     }
   }
 
   class TableConverter {
-    get tagName () { return 'table' }
+    get tagName() { return 'table' }
 
-    get type () { return 'table' }
+    get type() { return 'table' }
 
-    import (el, node, importer) {
+    import(el, node, importer) {
       const doc = importer.state.doc;
       const $$ = (type, props = {}) => doc.create(Object.assign(props, { type }));
       let rows = el.findAll('tr');
@@ -12210,7 +12245,7 @@
       });
     }
 
-    export (table, el, exporter) {
+    export(table, el, exporter) {
       const $$ = exporter.$$;
       let htmlTable = $$('table').attr('id', table.id);
       let tbody = $$('tbody');
@@ -12248,7 +12283,7 @@
     }
   }
 
-  function _fillSpanned ($$, newRows, row, col, rowspan, colspan) {
+  function _fillSpanned($$, newRows, row, col, rowspan, colspan) {
     if (!rowspan && !colspan) return
     if (!rowspan) rowspan = 1;
     if (!colspan) colspan = 1;
@@ -12263,7 +12298,7 @@
   var BoldConverter = {
     type: 'bold',
     tagName: 'b',
-    matchElement (el) {
+    matchElement(el) {
       return (el.is('b')) ||
         (el.is('span') && el.getStyle('font-weight') === '700')
     }
@@ -12272,13 +12307,13 @@
   var ExtLinkConverter = {
     type: 'external-link',
     tagName: 'a',
-    import (el, node) {
+    import(el, node) {
       let href = el.getAttribute('href');
       if (href) {
         node.href = href;
       }
     },
-    export (node, el) {
+    export(node, el) {
       el.setAttribute('href', node.href);
     }
   };
@@ -12286,10 +12321,10 @@
   var PreformatConverter = {
     type: 'preformat',
     tagName: 'pre',
-    import (el, node, converter) {
+    import(el, node, converter) {
       node.content = converter.annotatedText(el, [node.id, 'content'], { preserveWhitespace: true });
     },
-    export (node, el, converter) {
+    export(node, el, converter) {
       el.append(
         converter.annotatedText([node.id, 'content'])
       );
@@ -12299,15 +12334,15 @@
   var HeadingConverter = {
     type: 'heading',
 
-    matchElement (el) {
+    matchElement(el) {
       return /^h\d$/.exec(el.tagName)
     },
 
-    import (el, node, converter) {
+    import(el, node, converter) {
       node.content = converter.annotatedText(el, [node.id, 'content'], { preserveWhitespace: true });
     },
 
-    export (node, el, converter) {
+    export(node, el, converter) {
       el.tagName = `h${node.level}`;
       el.append(converter.annotatedText([node.id, 'content']));
     }
@@ -12316,20 +12351,20 @@
   var ItalicConverter = {
     type: 'italic',
     tagName: 'i',
-    matchElement (el) {
+    matchElement(el) {
       return (el.is('i')) ||
         (el.is('span') && el.getStyle('font-style') === 'italic')
     }
   };
 
   class ListConverter {
-    get type () { return 'list' }
+    get type() { return 'list' }
 
-    matchElement (el) {
+    matchElement(el) {
       return el.is('ul') || el.is('ol')
     }
 
-    import (el, node, converter) {
+    import(el, node, converter) {
       this._santizeNestedLists(el);
 
       let items = [];
@@ -12346,7 +12381,7 @@
       this._createListItems(converter, node, items, config);
     }
 
-    _createListItems (converter, node, items, levelTypes) {
+    _createListItems(converter, node, items, levelTypes) {
       node.items = items.map(d => {
         let listItem = converter.convertElement(d.el);
         listItem.level = d.level;
@@ -12355,7 +12390,7 @@
       node.listType = levelTypes.join(',');
     }
 
-    export (node, el, converter) {
+    export(node, el, converter) {
       let $$ = converter.$$;
       let _createElement = function (arg) {
         if (substance.isString(arg)) {
@@ -12373,7 +12408,7 @@
       return el
     }
 
-    _santizeNestedLists (root) {
+    _santizeNestedLists(root) {
       // pulling out uls from <li> to simplify the problem
       /*
         E.g.
@@ -12413,10 +12448,10 @@
   var ParagraphConverter = {
     type: 'paragraph',
     tagName: 'p',
-    import (el, node, converter) {
+    import(el, node, converter) {
       node.content = converter.annotatedText(el, [node.id, 'content']);
     },
-    export (node, el, converter) {
+    export(node, el, converter) {
       el.append(converter.annotatedText([node.id, 'content']));
     }
   };
@@ -12424,10 +12459,10 @@
   var StrikeConverter = {
     type: 'strike-through',
     tagName: 's',
-    matchElement (el) {
+    matchElement(el) {
       return el.is('s') || el.is('strike') || el.getStyle('text-decoration') === 'line-through'
     },
-    export (node, el) {
+    export(node, el) {
       el.setStyle('text-decoration', 'line-through');
     }
   };
@@ -12435,7 +12470,7 @@
   var SubConverter = {
     type: 'subscript',
     tagName: 'sub',
-    matchElement (el) {
+    matchElement(el) {
       return (el.is('sub')) || (el.is('span') && el.getStyle('vertical-align') === 'sub')
     }
   };
@@ -12443,7 +12478,7 @@
   var SupConverter = {
     type: 'superscript',
     tagName: 'sup',
-    matchElement (el) {
+    matchElement(el) {
       return (el.is('sup')) || (el.is('span') && el.getStyle('vertical-align') === 'super')
     }
   };
@@ -12451,10 +12486,10 @@
   var UnderlineConverter = {
     type: 'underline',
     tagName: 'u',
-    matchElement (el) {
+    matchElement(el) {
       return el.is('u') || el.getStyle('text-decoration') === 'underline'
     },
-    export (node, el) {
+    export(node, el) {
       el.setStyle('text-decoration', 'underline');
     }
   };
@@ -12475,26 +12510,26 @@
     UnderlineConverter
   ];
 
-  class ArticleHTMLExporter extends substance.HTMLExporter {}
+  class ArticleHTMLExporter extends substance.HTMLExporter { }
 
   class ArticleHTMLImporter extends substance.HTMLImporter {
-    _getUnsupportedElementConverter () {
+    _getUnsupportedElementConverter() {
       return _UnsupportedElementImporter
     }
   }
 
   const _UnsupportedElementImporter = {
     type: 'paragraph',
-    import (el, node, converter) {
+    import(el, node, converter) {
       node.content = converter.annotatedText(el, [node.id, 'content'], { preserveWhitespace: true });
     }
   };
 
-  function createEmptyJATS () {
+  function createEmptyJATS() {
     return substance.DefaultDOMElement.parseXML(EMPTY_JATS)
   }
 
-  function getText (rootEl, selector) {
+  function getText(rootEl, selector) {
     let el = rootEl.find(selector);
     if (el) {
       return el.textContent
@@ -12503,7 +12538,7 @@
     }
   }
 
-  function getSeparatedText (rootEl, selector) {
+  function getSeparatedText(rootEl, selector) {
     let el = rootEl.findAll(selector);
     if (el) {
       return el.map(m => { return m.textContent }).join('; ')
@@ -12512,7 +12547,7 @@
     }
   }
 
-  function getAttr (rootEl, selector, attr) {
+  function getAttr(rootEl, selector, attr) {
     let el = rootEl.find(selector);
     if (el) {
       return el.attr(attr)
@@ -12521,7 +12556,7 @@
     }
   }
 
-  function findChild (el, cssSelector) {
+  function findChild(el, cssSelector) {
     const children = el.getChildren();
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
@@ -12529,7 +12564,7 @@
     }
   }
 
-  function findAllChildren (el, cssSelector) {
+  function findAllChildren(el, cssSelector) {
     const children = el.getChildren();
     let result = [];
     for (let i = 0; i < children.length; i++) {
@@ -12541,13 +12576,13 @@
     return result
   }
 
-  function printElement (el, options = {}) {
+  function printElement(el, options = {}) {
     let maxLevel = options.maxLevel || 1000;
     let res = _printElement(el, 1, maxLevel);
     return res
   }
 
-  function retainChildren (el, ...allowedTagNames) {
+  function retainChildren(el, ...allowedTagNames) {
     allowedTagNames = new Set(allowedTagNames);
     let childNodes = el.getChildNodes();
     for (let idx = childNodes.length - 1; idx >= 0; idx--) {
@@ -12559,7 +12594,7 @@
     return el
   }
 
-  function _printElement (el, level, maxLevel) {
+  function _printElement(el, level, maxLevel) {
     let INDENT = new Array(level - 1);
     INDENT.fill('  ');
     INDENT = INDENT.join('');
@@ -12591,7 +12626,7 @@
     }
   }
 
-  function _openTag (el) {
+  function _openTag(el) {
     let attribStr = substance.DomUtils.formatAttribs(el);
     if (attribStr) {
       return `<${el.tagName} ${attribStr}>`
@@ -12600,12 +12635,12 @@
     }
   }
 
-  function _closeTag (el) {
+  function _closeTag(el) {
     return `</${el.tagName}>`
   }
 
   class SectionContainerConverter {
-    import (el, node, importer) {
+    import(el, node, importer) {
       let children = el.getChildren();
       let flattened = [];
       for (let child of children) {
@@ -12618,7 +12653,7 @@
       node.content = flattened.map(el => importer.convertElement(el).id);
     }
 
-    _flattenSec (sec, level) {
+    _flattenSec(sec, level) {
       let result = [];
 
       let h = sec.createElement('heading');
@@ -12662,7 +12697,7 @@
       return result
     }
 
-    export (node, el, exporter) {
+    export(node, el, exporter) {
       let $$ = el.createElement.bind(el);
       const children = node.resolve('content');
       let stack = [{ el }];
@@ -12688,7 +12723,7 @@
     }
   }
 
-  function internal2jats (doc, jatsExporter) { // eslint-disable-line
+  function internal2jats(doc, jatsExporter) { // eslint-disable-line
     let jats = createEmptyJATS();
     jats.$$ = jats.createElement.bind(jats);
 
@@ -12700,7 +12735,7 @@
     return jats
   }
 
-  function _populateMeta (jats, doc, jatsExporter) {
+  function _populateMeta(jats, doc, jatsExporter) {
     // TODO: journal-meta would go here, but is not supported yet
 
     // @article-type
@@ -12715,7 +12750,7 @@
     // TODO: def-list would go here, but is not supported yet
   }
 
-  function _populateArticleMeta (jats, doc, jatsExporter) {
+  function _populateArticleMeta(jats, doc, jatsExporter) {
     const $$ = jats.$$;
     let articleMeta = jats.createElement('article-meta');
     let metadata = doc.get('metadata');
@@ -12730,15 +12765,15 @@
     // title-group?
     articleMeta.append(_exportTitleGroup(jats, doc, jatsExporter))
 
-    // contrib-group*
-    ;[
-      ['author', ['metadata', 'authors']],
-      ['editor', ['metadata', 'editors']]
-    ].forEach(([type, collectionPath]) => {
-      articleMeta.append(
-        _exportContribGroup(jats, doc, jatsExporter, collectionPath, type)
-      );
-    });
+      // contrib-group*
+      ;[
+        ['author', ['metadata', 'authors']],
+        ['editor', ['metadata', 'editors']]
+      ].forEach(([type, collectionPath]) => {
+        articleMeta.append(
+          _exportContribGroup(jats, doc, jatsExporter, collectionPath, type)
+        );
+      });
 
     // aff*
     articleMeta.append(_exportAffiliations(jats, doc));
@@ -12840,7 +12875,7 @@
     front.replaceChild(oldArticleMeta, articleMeta);
   }
 
-  function _exportSubjects (jats, doc) {
+  function _exportSubjects(jats, doc) {
     // NOTE: subjects are used to populate <article-categories>
     // - subjects are organized flat, not hierarchically
     // - `subject.category` is mapped to subject[content-type]
@@ -12877,7 +12912,7 @@
     }
   }
 
-  function _exportTitleGroup (jats, doc, jatsExporter) {
+  function _exportTitleGroup(jats, doc, jatsExporter) {
     let $$ = jats.$$;
     // ATTENTION: ATM only title and subtitle is supported
     // JATS supports more titles beyond this (e.g. for special purposes)
@@ -12898,7 +12933,7 @@
     return titleGroupEl
   }
 
-  function _exportContribGroup (jats, doc, exporter, collectionPath, type) {
+  function _exportContribGroup(jats, doc, exporter, collectionPath, type) {
     // FIXME: this should not happen if we have general support for 'person-groups'
     // ATM, we only support authors, and editors.
     let $$ = jats.$$;
@@ -12911,7 +12946,7 @@
         persons.forEach(person => {
           contribGroupEl.append(_exportPerson($$, exporter, person));
         });
-      // persons within a group are nested into an extra <contrib> layer
+        // persons within a group are nested into an extra <contrib> layer
       } else {
         let group = doc.get(groupId);
         contribGroupEl.append(_exportGroup($$, exporter, group, persons));
@@ -12927,7 +12962,7 @@
 
     [p1,p2g1,p3g2,p4g1] => {p1: p1, g1: [p2,p4], g2: [p3] }
   */
-  function _groupContribs (contribs) {
+  function _groupContribs(contribs) {
     let groups = new Map();
     groups.set('NOGROUP', []);
     for (let contrib of contribs) {
@@ -12944,7 +12979,7 @@
     return groups
   }
 
-  function _exportPerson ($$, exporter, node) {
+  function _exportPerson($$, exporter, node) {
     let el = $$('contrib').attr({
       'id': node.id,
       'contrib-type': 'person',
@@ -12976,7 +13011,7 @@
     return el
   }
 
-  function _createBioElement ($$, exporter, node) {
+  function _createBioElement($$, exporter, node) {
     let content = node.resolve('bio');
     if (content.length > 0) {
       // NOTE: we don't want to export empty containers
@@ -12992,7 +13027,7 @@
     }
   }
 
-  function _exportGroup ($$, exporter, node, groupMembers) {
+  function _exportGroup($$, exporter, node, groupMembers) {
     /*
       <contrib id="${node.id}" contrib-type="group" equal-contrib="yes|no" corresp="yes|no">
         <collab>
@@ -13047,7 +13082,7 @@
     return contribEl
   }
 
-  function _exportAffiliations (jats, doc) {
+  function _exportAffiliations(jats, doc) {
     let $$ = jats.$$;
     let affiliations = doc.resolve(['metadata', 'affiliations']);
     let orgEls = affiliations.map(node => {
@@ -13071,7 +13106,7 @@
     return orgEls
   }
 
-  function _exportDate ($$, node, prop, dateType, tag) {
+  function _exportDate($$, node, prop, dateType, tag) {
     const date = node[prop];
     // Do not export a date without value
     if (!date) return
@@ -13102,25 +13137,25 @@
     return el
   }
 
-  function _isDateValid (str) {
+  function _isDateValid(str) {
     const regexp = /^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$/;
     if (!regexp.test(str)) return false
     return true
   }
 
-  function _isYearMonthDateValid (str) {
+  function _isYearMonthDateValid(str) {
     const regexp = /^[0-9]{4}-(0[1-9]|1[0-2])$/;
     if (!regexp.test(str)) return false
     return true
   }
 
-  function _isYearDateValid (str) {
+  function _isYearDateValid(str) {
     const regexp = /^[0-9]{4}$/;
     if (!regexp.test(str)) return false
     return true
   }
 
-  function _createTextElement ($$, text, tagName, attrs) {
+  function _createTextElement($$, text, tagName, attrs) {
     if (text) {
       let el = $$(tagName).append(text);
       substance.forEach(attrs, (value, key) => {
@@ -13135,7 +13170,7 @@
    * @param {Document} doc the document to convert from
    * @param {XMLExporter} jatsExporter an exporter instance used to export nested nodes
    */
-  function _exportAbstract (jats, doc, jatsExporter) {
+  function _exportAbstract(jats, doc, jatsExporter) {
     const $$ = jats.$$;
     let sectionContainerConverter = new SectionContainerConverter();
     let abstract = doc.get('abstract');
@@ -13168,7 +13203,7 @@
     return els
   }
 
-  function _exportKeywords (jats, doc, jatsExporter) {
+  function _exportKeywords(jats, doc, jatsExporter) {
     const $$ = jats.$$;
     // TODO: remove or rework tranlations of keywords
     const keywords = doc.resolve(['metadata', 'keywords']);
@@ -13198,7 +13233,7 @@
     return keywordGroups
   }
 
-  function _exportFunders (jats, doc) {
+  function _exportFunders(jats, doc) {
     const $$ = jats.$$;
     let funders = doc.resolve(['metadata', 'funders']);
     if (funders.length > 0) {
@@ -13218,7 +13253,7 @@
     }
   }
 
-  function _populateBody (jats, doc, jatsExporter) {
+  function _populateBody(jats, doc, jatsExporter) {
     let body = doc.get('body');
     if (!_isContainerEmpty(body, 'content')) {
       let bodyEl = jatsExporter.convertNode(body);
@@ -13227,7 +13262,7 @@
     }
   }
 
-  function _populateBack (jats, doc, jatsExporter) {
+  function _populateBack(jats, doc, jatsExporter) {
     let $$ = jats.$$;
     let backEl = jats.find('article > back');
     /*
@@ -13260,11 +13295,11 @@
     }
   }
 
-  function _exportAnnotatedText (jatsExporter, path, el) {
+  function _exportAnnotatedText(jatsExporter, path, el) {
     el.append(jatsExporter.annotatedText(path));
   }
 
-  function _isContainerEmpty (node, propertyName) {
+  function _isContainerEmpty(node, propertyName) {
     let ids = node[propertyName];
     if (ids.length === 0) return true
     if (ids.length > 1) return false
@@ -13278,7 +13313,7 @@
       Takes a InternalArticle document as a DOM and transforms it into a JATS document,
       following TextureArticle guidelines.
     */
-    export (doc) {
+    export(doc) {
       // TODO: consolidate DOMExporter / XMLExporter
       this.state.doc = doc;
       let jats = internal2jats(doc, this);
@@ -13289,7 +13324,7 @@
       }
     }
 
-    getNodeConverter (node) {
+    getNodeConverter(node) {
       let type = node.type;
       if (node.isInstanceOf('reference')) {
         type = 'reference';
@@ -13298,7 +13333,7 @@
     }
 
     // TODO: try to improve the core implementation to allow disabling of defaultBlockConverter
-    convertNode (node) {
+    convertNode(node) {
       if (substance.isString(node)) {
         // Assuming this.state.doc has been set by convertDocument
         node = this.state.doc.get(node);
@@ -13336,7 +13371,7 @@
     /*
       2.0 API suggestion (pass only id, not data)
     */
-    insertInlineNode (tx, node) {
+    insertInlineNode(tx, node) {
       let text = '\uFEFF';
       this.insertText(tx, text);
       let sel = tx.selection;
@@ -13350,7 +13385,7 @@
       return node
     }
 
-    createListNode (tx, containerPath, params) {
+    createListNode(tx, containerPath, params) {
       let prop = tx.getProperty(containerPath);
       if (prop.targetTypes.has('list')) {
         return tx.create({ type: 'list', listType: params.listType })
@@ -13359,7 +13394,7 @@
       }
     }
 
-    insertBlockNode (tx, node) {
+    insertBlockNode(tx, node) {
       // HACK: deviating from the current implementation
       // to replace selected node, because it happens quite often
       let sel = tx.selection;
@@ -13369,7 +13404,7 @@
       super.insertBlockNode(tx, node);
     }
 
-    indent (tx) {
+    indent(tx) {
       let sel = tx.selection;
       if (sel.isPropertySelection()) {
         let nodeId = sel.start.getNodeId();
@@ -13380,7 +13415,7 @@
       }
     }
 
-    dedent (tx) {
+    dedent(tx) {
       let sel = tx.selection;
       if (sel.isPropertySelection()) {
         let nodeId = sel.start.getNodeId();
@@ -13393,27 +13428,27 @@
   }
 
   class InternalArticleDocument extends substance.Document {
-    getRootNode () {
+    getRootNode() {
       return this.get('article')
     }
 
-    createEditingInterface () {
+    createEditingInterface() {
       return new substance.EditingInterface(this, { editing: new ArticleEditingImpl() })
     }
 
-    find (selector) {
+    find(selector) {
       return this.getRootNode().find(selector)
     }
 
-    findAll (selector) {
+    findAll(selector) {
       return this.getRootNode().findAll(selector)
     }
 
-    getTitle () {
+    getTitle() {
       this.resolve(['article', 'title']);
     }
 
-    invert (change) {
+    invert(change) {
       let inverted = change.invert();
       let info = inverted.info || {};
       switch (change.info.action) {
@@ -13434,20 +13469,20 @@
           break
         }
         default:
-          //
+        //
       }
       inverted.info = info;
       return inverted
     }
 
     // Overridden to retain the original docType
-    newInstance () {
+    newInstance() {
       let doc = super.newInstance();
       doc.docType = this.docType;
       return doc
     }
 
-    static createEmptyArticle (schema) {
+    static createEmptyArticle(schema) {
       let doc = new InternalArticleDocument(schema);
       substance.documentHelpers.createNodeFromJson(doc, {
         type: 'article',
@@ -13475,7 +13510,7 @@
     }
   }
 
-  function jats2internal (jats, doc, jatsImporter) {
+  function jats2internal(jats, doc, jatsImporter) {
     // metadata
     _populateAffiliations(doc, jats);
     _populateAuthors(doc, jats, jatsImporter);
@@ -13496,7 +13531,7 @@
     return doc
   }
 
-  function _populateAffiliations (doc, jats) {
+  function _populateAffiliations(doc, jats) {
     const affEls = jats.findAll('article > front > article-meta > aff');
     let orgIds = affEls.map(el => {
       let org = {
@@ -13522,17 +13557,17 @@
     doc.set(['metadata', 'affiliations'], orgIds);
   }
 
-  function _populateAuthors (doc, jats, importer) {
+  function _populateAuthors(doc, jats, importer) {
     let authorEls = jats.findAll(`contrib-group[content-type=author] > contrib`);
     _populateContribs(doc, jats, importer, ['metadata', 'authors'], authorEls);
   }
 
-  function _populateEditors (doc, jats, importer) {
+  function _populateEditors(doc, jats, importer) {
     let editorEls = jats.findAll(`contrib-group[content-type=editor] > contrib`);
     _populateContribs(doc, jats, importer, ['metadata', 'editors'], editorEls);
   }
 
-  function _populateContribs (doc, jats, importer, contribsPath, contribEls, groupId) {
+  function _populateContribs(doc, jats, importer, contribsPath, contribEls, groupId) {
     for (let contribEl of contribEls) {
       if (contribEl.attr('contrib-type') === 'group') {
         // ATTENTION: groups are defined 'inplace'
@@ -13575,7 +13610,7 @@
   }
 
   // ATTENTION: bio is not a specific node anymore, just a collection of paragraphs
-  function _getBioContent (el, importer) {
+  function _getBioContent(el, importer) {
     let $$ = el.createElement.bind(el.getOwnerDocument());
     let bioEl = findChild(el, 'bio');
 
@@ -13595,7 +13630,7 @@
     return bioEl.children.map(child => importer.convertElement(child).id)
   }
 
-  function _getAffiliationIds (el, isGroup) {
+  function _getAffiliationIds(el, isGroup) {
     // let dom = el.ownerDocument
     let xrefs = el.findAll('xref[ref-type=aff]');
     // NOTE: for groups we need to extract only affiliations of group, without members
@@ -13606,13 +13641,13 @@
     return affs
   }
 
-  function _getAwardIds (el) {
+  function _getAwardIds(el) {
     let xrefs = el.findAll('xref[ref-type=award]');
     let awardIds = xrefs.map(xref => xref.attr('rid'));
     return awardIds
   }
 
-  function _populateFunders (doc, jats) {
+  function _populateFunders(doc, jats) {
     const awardEls = jats.findAll('article > front > article-meta > funding-group > award-group');
     let funderIds = awardEls.map(el => {
       let funder = {
@@ -13628,7 +13663,7 @@
   }
 
   // TODO: use doc API for manipulation, not a bare object
-  function _populateArticleInfo (doc, jats, jatsImporter) {
+  function _populateArticleInfo(doc, jats, jatsImporter) {
     let articleEl = jats.find('article');
     let articleMetaEl = articleEl.find('front > article-meta');
     let metadata = doc.get('metadata');
@@ -13675,7 +13710,7 @@
     'rev-request': 'revRequestedDate'
   };
 
-  function _extractDate (el) {
+  function _extractDate(el) {
     const dateType = el.getAttribute('date-type');
     const value = el.getAttribute('iso-8601-date');
     const entityProp = DATE_TYPES_MAP[dateType];
@@ -13685,7 +13720,7 @@
     }
   }
 
-  function _populateKeywords (doc, jats, jatsImporter) {
+  function _populateKeywords(doc, jats, jatsImporter) {
     let kwdEls = jats.findAll('article > front > article-meta > kwd-group > kwd');
     let kwdIds = kwdEls.map(kwdEl => {
       const kwd = doc.create({
@@ -13699,7 +13734,7 @@
     doc.get('metadata').keywords = kwdIds;
   }
 
-  function _populateSubjects (doc, jats) {
+  function _populateSubjects(doc, jats) {
     // TODO: IMO we need to consolidate this. The original meaning of <subj-group> seems to be
     // to be able to define an ontology, also hierarchically
     // This implementation assumes that subjects are flat.
@@ -13722,7 +13757,7 @@
     }
   }
 
-  function _populateTitle (doc, jats, jatsImporter) {
+  function _populateTitle(doc, jats, jatsImporter) {
     let article = doc.get('article');
     let titleEl = jats.find('article > front > article-meta > title-group > article-title');
     if (titleEl) {
@@ -13745,7 +13780,7 @@
     // }
   }
 
-  function _populateSubTitle (doc, jats, jatsImporter) {
+  function _populateSubTitle(doc, jats, jatsImporter) {
     let article = doc.get('article');
     let subTitleEl = jats.find('article > front > article-meta > title-group > subtitle');
     if (subTitleEl) {
@@ -13753,7 +13788,7 @@
     }
   }
 
-  function _populateAbstract (doc, jats, jatsImporter) {
+  function _populateAbstract(doc, jats, jatsImporter) {
     let $$ = jats.createElement.bind(jats);
     let sectionContainerConverter = new SectionContainerConverter();
 
@@ -13808,7 +13843,7 @@
     // }
   }
 
-  function _populateBody$1 (doc, jats, jatsImporter) {
+  function _populateBody$1(doc, jats, jatsImporter) {
     let $$ = jats.createElement.bind(jats);
     // ATTENTION: JATS can have multiple abstracts
     // ATM we only take the first, loosing the others
@@ -13830,7 +13865,7 @@
     }
   }
 
-  function _populateFootnotes (doc, jats, jatsImporter) {
+  function _populateFootnotes(doc, jats, jatsImporter) {
     let $$ = jats.createElement.bind(jats);
     let fnEls = jats.findAll('article > back > fn-group > fn');
     let article = doc.get('article');
@@ -13843,7 +13878,7 @@
     });
   }
 
-  function _populateReferences (doc, jats, jatsImporter) {
+  function _populateReferences(doc, jats, jatsImporter) {
     // TODO: make sure that we only allow this place for references via restricting the TextureJATS schema
     let refListEl = jats.find('article > back > ref-list');
     if (refListEl) {
@@ -13855,38 +13890,38 @@
 
   var UnsupportedInlineNodeConverter = {
     type: 'unsupported-inline-node',
-    matchElement (el) {
+    matchElement(el) {
       return false
     },
-    import (el, node) {
+    import(el, node) {
       node.data = el.serialize();
     },
-    export (node, el) {
+    export(node, el) {
       return substance.DefaultDOMElement.parseSnippet(node.data, 'xml')
     }
   };
 
   var UnsupportedNodeConverter = {
     type: 'unsupported-node',
-    matchElement (el) {
+    matchElement(el) {
       return false
     },
-    import (el, node) {
+    import(el, node) {
       node.data = el.serialize();
     },
-    export (node, el) {
+    export(node, el) {
       return substance.DefaultDOMElement.parseSnippet(node.data, 'xml')
     }
   };
 
   class ArticleJATSImporter extends substance.XMLImporter {
-    import (jats, options = {}) {
+    import(jats, options = {}) {
       let doc = this.state.doc;
       jats2internal(jats, doc, this);
       return doc
     }
 
-    annotatedText (el, path, options = {}) {
+    annotatedText(el, path, options = {}) {
       const state = this.state;
       let context = substance.last(state.contexts);
       // In contrast to the core implementation we want to allow that this is method is used to convert properties
@@ -13902,7 +13937,7 @@
       return text
     }
 
-    nextId (prefix) {
+    nextId(prefix) {
       // ATTENTION: we gonna use '_' as a prefix for automatically created ids
       // TODO: also do this for nodes created via Document
       let doc = this.state.doc;
@@ -13913,11 +13948,11 @@
       return id
     }
 
-    _createDocument () {
+    _createDocument() {
       return InternalArticleDocument.createEmptyArticle(this.state.doc.getSchema())
     }
 
-    _getConverterForElement (el, mode) {
+    _getConverterForElement(el, mode) {
       let converter = super._getConverterForElement(el, mode);
       if (!converter) {
         if (mode === 'inline') {
@@ -13929,7 +13964,7 @@
       return converter
     }
 
-    _convertInlineNode (el, nodeData, converter) {
+    _convertInlineNode(el, nodeData, converter) {
       const path = [];
       if (converter.import) {
         nodeData = converter.import(el, nodeData, this) || nodeData;
@@ -13939,7 +13974,7 @@
       return nodeData
     }
 
-    _createNode (nodeData) {
+    _createNode(nodeData) {
       let doc = this.state.doc;
       let node = doc.get(nodeData.id);
       if (node) {
@@ -13948,7 +13983,7 @@
       return doc.create(nodeData)
     }
 
-    _createNodeData (el, type) {
+    _createNodeData(el, type) {
       let nodeData = super._createNodeData(el, type);
       let attributes = {};
       el.getAttributes().forEach((value, key) => {
@@ -13959,1751 +13994,1751 @@
     }
   }
 
-  class TextureConfigurator extends substance.Configurator {}
+  class TextureConfigurator extends substance.Configurator { }
 
-  function unwrapExports (x) {
-  	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
+  function unwrapExports(x) {
+    return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
   }
 
   function createCommonjsModule(fn, module) {
-  	return module = { exports: {} }, fn(module, module.exports), module.exports;
+    return module = { exports: {} }, fn(module, module.exports), module.exports;
   }
 
   var textureXmlUtils_cjs = createCommonjsModule(function (module, exports) {
 
-  Object.defineProperty(exports, '__esModule', { value: true });
+    Object.defineProperty(exports, '__esModule', { value: true });
 
 
 
-  const START = 'START';
-  const END = 'END';
-  const EPSILON = 'EPSILON';
-  const TEXT = 'TEXT';
+    const START = 'START';
+    const END = 'END';
+    const EPSILON = 'EPSILON';
+    const TEXT = 'TEXT';
 
-  class DFA {
-    constructor (transitions) {
-      if (!transitions || Object.keys(transitions).length === 0) {
-        transitions = { START: { EPSILON: END } };
-      }
-      this.transitions = transitions;
-    }
-
-    consume (state, id) {
-      const T = this.transitions;
-      // e.g. this happens, if the state is already END
-      // and more tokens are coming
-      if (!T[state]) return -1
-      let nextState = T[state][id];
-      if (nextState !== undefined) {
-        return nextState
-      }
-      while (T[state][EPSILON] !== undefined) {
-        state = T[state][EPSILON];
-        if (state === END) {
-          return -1
+    class DFA {
+      constructor(transitions) {
+        if (!transitions || Object.keys(transitions).length === 0) {
+          transitions = { START: { EPSILON: END } };
         }
-        nextState = T[state][id];
+        this.transitions = transitions;
+      }
+
+      consume(state, id) {
+        const T = this.transitions;
+        // e.g. this happens, if the state is already END
+        // and more tokens are coming
+        if (!T[state]) return -1
+        let nextState = T[state][id];
         if (nextState !== undefined) {
           return nextState
         }
+        while (T[state][EPSILON] !== undefined) {
+          state = T[state][EPSILON];
+          if (state === END) {
+            return -1
+          }
+          nextState = T[state][id];
+          if (nextState !== undefined) {
+            return nextState
+          }
+        }
+        return -1
       }
-      return -1
-    }
 
-    canConsume (state, id) {
-      let nextState = this.consume(state, id);
-      return (nextState !== -1)
-    }
+      canConsume(state, id) {
+        let nextState = this.consume(state, id);
+        return (nextState !== -1)
+      }
 
-    isFinished (state) {
-      const T = this.transitions;
-      if (state === 'END') return true
-      // if the state is invalid
-      if (!T[state]) return false
-      while (T[state][EPSILON] !== undefined) {
-        state = T[state][EPSILON];
+      isFinished(state) {
+        const T = this.transitions;
         if (state === 'END') return true
+        // if the state is invalid
+        if (!T[state]) return false
+        while (T[state][EPSILON] !== undefined) {
+          state = T[state][EPSILON];
+          if (state === 'END') return true
+        }
+        return false
       }
-      return false
-    }
 
-    // Helpers to analyze
+      // Helpers to analyze
 
-    // generates all sets of tokens, reached on all different paths
-    _tokensByPath () {
-      const result = [];
-      const transitions = this.transitions;
-      if (!transitions) return []
+      // generates all sets of tokens, reached on all different paths
+      _tokensByPath() {
+        const result = [];
+        const transitions = this.transitions;
+        if (!transitions) return []
 
-      // group start edges by follow state
-      let first = {};
-      substance__default.forEach(transitions[START], (to, token) => {
-        if (!first[to]) first[to] = [];
-        first[to].push(token);
-      });
-
-      let visited = { START: true, END: true };
-      substance__default.forEach(first, (tokens, state) => {
-        // walk all states that can be reached on this path
-        // and collect all tokens
-        // we consider them as potential siblings, as they
-        // can co-occur at the same level
-        let _siblings = {};
-        tokens.forEach((t) => {
-          if (t !== EPSILON) {
-            _siblings[t] = true;
-          }
+        // group start edges by follow state
+        let first = {};
+        substance__default.forEach(transitions[START], (to, token) => {
+          if (!first[to]) first[to] = [];
+          first[to].push(token);
         });
-        let stack = [state];
-        while (stack.length > 0) {
-          let from = stack.pop();
-          if (state === END) continue
-          visited[from] = true;
-          let T = transitions[from];
-          if (!T) throw new Error(`Internal Error: no transition from state ${from}`)
-          let tokens = Object.keys(T);
-          for (let i = 0; i < tokens.length; i++) {
-            const token = tokens[i];
-            const to = T[token];
-            if (!visited[to]) stack.push(to);
-            if (token !== EPSILON) {
-              _siblings[token] = true;
+
+        let visited = { START: true, END: true };
+        substance__default.forEach(first, (tokens, state) => {
+          // walk all states that can be reached on this path
+          // and collect all tokens
+          // we consider them as potential siblings, as they
+          // can co-occur at the same level
+          let _siblings = {};
+          tokens.forEach((t) => {
+            if (t !== EPSILON) {
+              _siblings[t] = true;
+            }
+          });
+          let stack = [state];
+          while (stack.length > 0) {
+            let from = stack.pop();
+            if (state === END) continue
+            visited[from] = true;
+            let T = transitions[from];
+            if (!T) throw new Error(`Internal Error: no transition from state ${from}`)
+            let tokens = Object.keys(T);
+            for (let i = 0; i < tokens.length; i++) {
+              const token = tokens[i];
+              const to = T[token];
+              if (!visited[to]) stack.push(to);
+              if (token !== EPSILON) {
+                _siblings[token] = true;
+              }
             }
           }
-        }
-        let _siblingTokens = Object.keys(_siblings);
-        if (_siblingTokens.length > 0) {
-          result.push(_siblingTokens);
-        }
-      });
-      return result
-    }
-  }
-
-  DFA.START = START;
-  DFA.END = END;
-  DFA.EPSILON = EPSILON;
-  DFA.TEXT = TEXT;
-
-  const START$1 = DFA.START;
-  const END$1 = DFA.END;
-  const EPSILON$1 = DFA.EPSILON;
-
-  /*
-    DFABuilder is essentially a graph implementation
-    helping to build DFAs incrementally, by composing smaller
-    sub-DFAs.
-  */
-  class DFABuilder {
-    constructor (transitions) {
-      this.transitions = transitions;
+          let _siblingTokens = Object.keys(_siblings);
+          if (_siblingTokens.length > 0) {
+            result.push(_siblingTokens);
+          }
+        });
+        return result
+      }
     }
 
-    addTransition (from, to, tokens) {
-      if (!this.transitions) this.transitions = {};
-      if (!substance__default.isArray(tokens)) tokens = [tokens];
-      tokens.forEach(token => _addTransition(this.transitions, from, to, token));
-      return this
-    }
+    DFA.START = START;
+    DFA.END = END;
+    DFA.EPSILON = EPSILON;
+    DFA.TEXT = TEXT;
+
+    const START$1 = DFA.START;
+    const END$1 = DFA.END;
+    const EPSILON$1 = DFA.EPSILON;
 
     /*
-      Creates a new DFA with all state values shifted by a given offset.
-      Used when appending this DFA to another one (-> sequence)
-
-      ```
-      Expression: A,B
-
-      Graph:  S - [A] -> E
-              S - [B] -> E
-              =
-              S - [A] -> N - [B] -> E
-      ```
+      DFABuilder is essentially a graph implementation
+      helping to build DFAs incrementally, by composing smaller
+      sub-DFAs.
     */
-    append (other) {
-      if (this.transitions && other.transitions) {
-        let t1 = substance__default.cloneDeep(this.transitions);
-        let t2 = substance__default.cloneDeep(other.transitions);
-        // we need to be careful with EPSILON transitions
-        // so that don't end up having a NDFA.
-        let firstIsOptional = Boolean(t1[START$1][EPSILON$1]);
-        let secondIsOptional = Boolean(t2[START$1][EPSILON$1]);
+    class DFABuilder {
+      constructor(transitions) {
+        this.transitions = transitions;
+      }
 
-        if (firstIsOptional) {
-          // we remove the epsilon transition from the first
-          // as it would be in the way for the transformations done below
+      addTransition(from, to, tokens) {
+        if (!this.transitions) this.transitions = {};
+        if (!substance__default.isArray(tokens)) tokens = [tokens];
+        tokens.forEach(token => _addTransition(this.transitions, from, to, token));
+        return this
+      }
+
+      /*
+        Creates a new DFA with all state values shifted by a given offset.
+        Used when appending this DFA to another one (-> sequence)
+  
+        ```
+        Expression: A,B
+  
+        Graph:  S - [A] -> E
+                S - [B] -> E
+                =
+                S - [A] -> N - [B] -> E
+        ```
+      */
+      append(other) {
+        if (this.transitions && other.transitions) {
+          let t1 = substance__default.cloneDeep(this.transitions);
+          let t2 = substance__default.cloneDeep(other.transitions);
+          // we need to be careful with EPSILON transitions
+          // so that don't end up having a NDFA.
+          let firstIsOptional = Boolean(t1[START$1][EPSILON$1]);
+          let secondIsOptional = Boolean(t2[START$1][EPSILON$1]);
+
+          if (firstIsOptional) {
+            // we remove the epsilon transition from the first
+            // as it would be in the way for the transformations done below
+            delete t1[START$1][EPSILON$1];
+          }
+          // for the concatenation we insert a new state and adapt
+          // the transitions of the first and second DFA to use the new state
+          let newState = substance__default.uuid();
+          // let transitions of the first going to END
+          // now point to the new state
+          substance__default.forEach(t1, (T) => {
+            substance__default.forEach(T, (to, token) => {
+              if (to === END$1) {
+                T[token] = newState;
+              }
+            });
+          });
+          // If the first is optional we add transitions from
+          // START to the new state
+          if (firstIsOptional) {
+            substance__default.forEach(t2[START$1], (to, token) => {
+              _addTransition(t1, START$1, to, token);
+            });
+          }
+          // for concatenation we let transitions of the second DFA
+          // going from and to START now go from and to the new state
+          t2[newState] = t2[START$1];
+          substance__default.forEach(t2, (T) => {
+            substance__default.forEach(T, (to, token) => {
+              if (to === START$1) {
+                T[token] = newState;
+              }
+            });
+          });
+          delete t2[START$1];
+          // and now we can merge in the transitions
+          substance__default.forEach(t2, (T, from) => {
+            substance__default.forEach(T, (to, token) => {
+              _addTransition(t1, from, to, token);
+            });
+          });
+          // finally we add back an EPSILON transition
+          // if both DFAs were optional
+          if (firstIsOptional && secondIsOptional) {
+            _addTransition(t1, START$1, END$1, EPSILON$1);
+          }
+          this.transitions = t1;
+        } else if (other.transitions) {
+          this.transitions = substance__default.cloneDeep(other.transitions);
+        }
+        return this
+      }
+
+      /*
+        Merges to DFAs.
+  
+        Used to implement choices.
+  
+        ```
+        Expression: A | B
+  
+        Graph:     - [A] -
+                  /       \
+                S          > E
+                  \       /
+                   - [B] -
+  
+        ```
+      */
+      merge(other) {
+        if (this.transitions && other.transitions) {
+          let t1 = this.transitions;
+          let t2 = other.transitions;
+          substance__default.forEach(t2, (T, from) => {
+            substance__default.forEach(T, (to, token) => {
+              _addTransition(t1, from, to, token);
+            });
+          });
+        } else if (other.transitions) {
+          this.transitions = substance__default.cloneDeep(other.transitions);
+        }
+        return this
+      }
+
+      /*
+        Creates a new DFA with same transitions
+        plus an EPSILON transition from start to END
+  
+        ```
+        Expression: A?
+  
+        Graph:     - [A] -
+                  /       \
+                S          > E
+                  \       /
+                   -  ε  -
+        ```
+      */
+      optional() {
+        let dfa = new DFABuilder(substance__default.cloneDeep(this.transitions));
+        if (this.transitions) {
+          dfa.addTransition(START$1, END$1, EPSILON$1);
+        }
+        return dfa
+      }
+
+      /*
+        Creates a new DFA representing (A)*
+  
+        ```
+        Expression: A* = (A+)?
+  
+                           /-[A]-\
+                           |     |
+                            \   /
+                             v /
+        Graph:   S -- [A] --> 1  -- ε -->  E
+                  \                    /
+                   \   --    ε   --   /
+  
+        ```
+      */
+      kleene() {
+        let dfa = this.plus();
+        return dfa.optional()
+      }
+
+      /*
+        Creates a new DFA representing (...)+ by concatenating this
+        with a kleene version: A+ = A A*
+  
+        ```
+        Expression: (A)+ (sequence and reflexive edge)
+  
+                           /-[A]-\
+                           |     |
+                            \   /
+                             v /
+        Graph:  S -- [A] -->  N  -- ε -> E
+  
+        ```
+      */
+      plus() {
+        let dfa;
+        if (this.transitions) {
+          let t1 = substance__default.cloneDeep(this.transitions);
+          // there might exist an EPSILON transition already
+          // which we must remove to fulfill our internal
+          // assumption that there is only one EPSILON transition from
+          // START going to END
+          const isOptional = Boolean(t1[START$1][EPSILON$1]);
           delete t1[START$1][EPSILON$1];
-        }
-        // for the concatenation we insert a new state and adapt
-        // the transitions of the first and second DFA to use the new state
-        let newState = substance__default.uuid();
-        // let transitions of the first going to END
-        // now point to the new state
-        substance__default.forEach(t1, (T) => {
-          substance__default.forEach(T, (to, token) => {
-            if (to === END$1) {
-              T[token] = newState;
-            }
+          // introduce a new state
+          // and let all 'ending' edges point to new state
+          let newState = substance__default.uuid();
+          substance__default.forEach(t1, (T) => {
+            substance__default.forEach(T, (to, token) => {
+              if (to === END$1) {
+                T[token] = newState;
+              }
+            });
           });
-        });
-        // If the first is optional we add transitions from
-        // START to the new state
-        if (firstIsOptional) {
-          substance__default.forEach(t2[START$1], (to, token) => {
-            _addTransition(t1, START$1, to, token);
+          // add 'ending' EPSILON transition
+          _addTransition(t1, newState, END$1, EPSILON$1);
+          // copy all starting edges
+          substance__default.forEach(t1[START$1], (to, token) => {
+            _addTransition(t1, newState, to, token);
           });
-        }
-        // for concatenation we let transitions of the second DFA
-        // going from and to START now go from and to the new state
-        t2[newState] = t2[START$1];
-        substance__default.forEach(t2, (T) => {
-          substance__default.forEach(T, (to, token) => {
-            if (to === START$1) {
-              T[token] = newState;
-            }
-          });
-        });
-        delete t2[START$1];
-        // and now we can merge in the transitions
-        substance__default.forEach(t2, (T, from) => {
-          substance__default.forEach(T, (to, token) => {
-            _addTransition(t1, from, to, token);
-          });
-        });
-        // finally we add back an EPSILON transition
-        // if both DFAs were optional
-        if (firstIsOptional && secondIsOptional) {
-          _addTransition(t1, START$1, END$1, EPSILON$1);
-        }
-        this.transitions = t1;
-      } else if (other.transitions) {
-        this.transitions = substance__default.cloneDeep(other.transitions);
-      }
-      return this
-    }
-
-    /*
-      Merges to DFAs.
-
-      Used to implement choices.
-
-      ```
-      Expression: A | B
-
-      Graph:     - [A] -
-                /       \
-              S          > E
-                \       /
-                 - [B] -
-
-      ```
-    */
-    merge (other) {
-      if (this.transitions && other.transitions) {
-        let t1 = this.transitions;
-        let t2 = other.transitions;
-        substance__default.forEach(t2, (T, from) => {
-          substance__default.forEach(T, (to, token) => {
-            _addTransition(t1, from, to, token);
-          });
-        });
-      } else if (other.transitions) {
-        this.transitions = substance__default.cloneDeep(other.transitions);
-      }
-      return this
-    }
-
-    /*
-      Creates a new DFA with same transitions
-      plus an EPSILON transition from start to END
-
-      ```
-      Expression: A?
-
-      Graph:     - [A] -
-                /       \
-              S          > E
-                \       /
-                 -  ε  -
-      ```
-    */
-    optional () {
-      let dfa = new DFABuilder(substance__default.cloneDeep(this.transitions));
-      if (this.transitions) {
-        dfa.addTransition(START$1, END$1, EPSILON$1);
-      }
-      return dfa
-    }
-
-    /*
-      Creates a new DFA representing (A)*
-
-      ```
-      Expression: A* = (A+)?
-
-                         /-[A]-\
-                         |     |
-                          \   /
-                           v /
-      Graph:   S -- [A] --> 1  -- ε -->  E
-                \                    /
-                 \   --    ε   --   /
-
-      ```
-    */
-    kleene () {
-      let dfa = this.plus();
-      return dfa.optional()
-    }
-
-    /*
-      Creates a new DFA representing (...)+ by concatenating this
-      with a kleene version: A+ = A A*
-
-      ```
-      Expression: (A)+ (sequence and reflexive edge)
-
-                         /-[A]-\
-                         |     |
-                          \   /
-                           v /
-      Graph:  S -- [A] -->  N  -- ε -> E
-
-      ```
-    */
-    plus () {
-      let dfa;
-      if (this.transitions) {
-        let t1 = substance__default.cloneDeep(this.transitions);
-        // there might exist an EPSILON transition already
-        // which we must remove to fulfill our internal
-        // assumption that there is only one EPSILON transition from
-        // START going to END
-        const isOptional = Boolean(t1[START$1][EPSILON$1]);
-        delete t1[START$1][EPSILON$1];
-        // introduce a new state
-        // and let all 'ending' edges point to new state
-        let newState = substance__default.uuid();
-        substance__default.forEach(t1, (T) => {
-          substance__default.forEach(T, (to, token) => {
-            if (to === END$1) {
-              T[token] = newState;
-            }
-          });
-        });
-        // add 'ending' EPSILON transition
-        _addTransition(t1, newState, END$1, EPSILON$1);
-        // copy all starting edges
-        substance__default.forEach(t1[START$1], (to, token) => {
-          _addTransition(t1, newState, to, token);
-        });
-        // recover 'optional'
-        if (isOptional) {
-          _addTransition(t1, START$1, END$1, EPSILON$1);
-        }
-        dfa = new DFABuilder(t1);
-      } else {
-        dfa = new DFABuilder(substance__default.cloneDeep(this.transitions));
-      }
-      return dfa
-    }
-  }
-
-  DFABuilder.singleToken = function (token) {
-    let dfa = new DFABuilder();
-    dfa.addTransition(START$1, END$1, token);
-    return dfa
-  };
-
-  function _addTransition (transitions, from, to, token) {
-    let T = transitions[from];
-    if (!T) {
-      transitions[from] = T = {};
-    }
-    if (token === EPSILON$1 && from === START$1 && to !== END$1) {
-      throw new Error('The only EPSILON transition from START must be START->END')
-    }
-    if (T[token] && T[token] !== to) {
-      console.error('Token %s already used. Ignoring this transition.', token);
-      return
-      // throw new Error('Token already used in this state')
-    }
-    T[token] = to;
-  }
-
-  const { START: START$2, END: END$2, TEXT: TEXT$1, EPSILON: EPSILON$2 } = DFA;
-
-  // retains the structured representation
-  // and compiles a DFA for efficient processing
-  class Expression {
-    // TODO: why does the expression need a name?
-    constructor (name, root) {
-      this.name = name;
-      this.root = root;
-
-      this._initialize();
-    }
-
-    _initialize () {
-      this._compile();
-    }
-
-    toString () {
-      return this.root.toString()
-    }
-
-    isAllowed (tagName) {
-      return Boolean(this._allowedChildren[tagName])
-    }
-
-    /*
-      Some structures get compiled into a DFA, for instance.
-    */
-    _compile () {
-      this.root._compile();
-    }
-
-    _describeError (state, token) {
-      let msg = [];
-      if (token !== TEXT$1) {
-        if (!this.isAllowed(token)) {
-          msg.push(`<${token}> is not valid in <${this.name}>\nSchema: ${this.toString()}`);
+          // recover 'optional'
+          if (isOptional) {
+            _addTransition(t1, START$1, END$1, EPSILON$1);
+          }
+          dfa = new DFABuilder(t1);
         } else {
-          // otherwise just the position is wrong
-          msg.push(`<${token}> is not allowed at the current position in <${this.name}>.\n${this.toString()}`);
+          dfa = new DFABuilder(substance__default.cloneDeep(this.transitions));
         }
+        return dfa
+      }
+    }
+
+    DFABuilder.singleToken = function (token) {
+      let dfa = new DFABuilder();
+      dfa.addTransition(START$1, END$1, token);
+      return dfa
+    };
+
+    function _addTransition(transitions, from, to, token) {
+      let T = transitions[from];
+      if (!T) {
+        transitions[from] = T = {};
+      }
+      if (token === EPSILON$1 && from === START$1 && to !== END$1) {
+        throw new Error('The only EPSILON transition from START must be START->END')
+      }
+      if (T[token] && T[token] !== to) {
+        console.error('Token %s already used. Ignoring this transition.', token);
+        return
+        // throw new Error('Token already used in this state')
+      }
+      T[token] = to;
+    }
+
+    const { START: START$2, END: END$2, TEXT: TEXT$1, EPSILON: EPSILON$2 } = DFA;
+
+    // retains the structured representation
+    // and compiles a DFA for efficient processing
+    class Expression {
+      // TODO: why does the expression need a name?
+      constructor(name, root) {
+        this.name = name;
+        this.root = root;
+
+        this._initialize();
+      }
+
+      _initialize() {
+        this._compile();
+      }
+
+      toString() {
+        return this.root.toString()
+      }
+
+      isAllowed(tagName) {
+        return Boolean(this._allowedChildren[tagName])
+      }
+
+      /*
+        Some structures get compiled into a DFA, for instance.
+      */
+      _compile() {
+        this.root._compile();
+      }
+
+      _describeError(state, token) {
+        let msg = [];
+        if (token !== TEXT$1) {
+          if (!this.isAllowed(token)) {
+            msg.push(`<${token}> is not valid in <${this.name}>\nSchema: ${this.toString()}`);
+          } else {
+            // otherwise just the position is wrong
+            msg.push(`<${token}> is not allowed at the current position in <${this.name}>.\n${this.toString()}`);
+          }
+        } else {
+          msg.push(`TEXT is not allowed at the current position: ${state.trace.join(',')}\n${this.toString()}`);
+        }
+        return msg.join('')
+      }
+    }
+
+    function createExpression(name, root) {
+      if (root instanceof Interleave) {
+        return new InterleaveExpr(name, root)
       } else {
-        msg.push(`TEXT is not allowed at the current position: ${state.trace.join(',')}\n${this.toString()}`);
-      }
-      return msg.join('')
-    }
-  }
-
-  function createExpression (name, root) {
-    if (root instanceof Interleave) {
-      return new InterleaveExpr(name, root)
-    } else {
-      return new DFAExpr(name, root)
-    }
-  }
-
-  class DFAExpr extends Expression {
-    getInitialState () {
-      return {
-        dfaState: START$2,
-        errors: [],
-        trace: []
+        return new DFAExpr(name, root)
       }
     }
 
-    consume (state, token) {
-      const dfa = this.dfa;
-      let oldState = state.dfaState;
-      let newState = dfa.consume(oldState, token);
-      state.dfaState = newState;
-      if (newState === -1) {
-        state.errors.push({
-          msg: this._describeError(state, token),
-          // HACK: we want to have the element with the errors
-          // but actually, here we do not know about that context
-          el: state.el
+    class DFAExpr extends Expression {
+      getInitialState() {
+        return {
+          dfaState: START$2,
+          errors: [],
+          trace: []
+        }
+      }
+
+      consume(state, token) {
+        const dfa = this.dfa;
+        let oldState = state.dfaState;
+        let newState = dfa.consume(oldState, token);
+        state.dfaState = newState;
+        if (newState === -1) {
+          state.errors.push({
+            msg: this._describeError(state, token),
+            // HACK: we want to have the element with the errors
+            // but actually, here we do not know about that context
+            el: state.el
+          });
+          return false
+        } else {
+          state.trace.push(token);
+          return true
+        }
+      }
+
+      isFinished(state) {
+        return this.dfa.isFinished(state.dfaState)
+      }
+
+      _initialize() {
+        super._initialize();
+
+        this._computeAllowedChildren();
+      }
+
+      _compile() {
+        super._compile();
+        this.dfa = new DFA(this.root.dfa.transitions);
+      }
+
+      _computeAllowedChildren() {
+        this._allowedChildren = _collectAllTokensFromDFA(this.dfa);
+      }
+
+      _isValid(_tokens) {
+        let state = this.getInitialState();
+        for (let i = 0; i < _tokens.length; i++) {
+          const token = _tokens[i];
+          // Note: there might be some elements which
+          // are not relevant, such as empty text nodes
+          // or comments etc.
+          if (!token) continue
+          if (!this.consume(state, token)) {
+            return false
+          }
+        }
+        return this.isFinished(state)
+      }
+    }
+
+    function _collectAllTokensFromDFA(dfa) {
+      // Note: collecting all children
+      const children = {};
+      if (dfa.transitions) {
+        substance__default.forEach(dfa.transitions, (T) => {
+          Object.keys(T).forEach((tagName) => {
+            if (tagName === EPSILON$2) return
+            children[tagName] = true;
+          });
         });
-        return false
-      } else {
-        state.trace.push(token);
+      }
+      return children
+    }
+
+    class InterleaveExpr extends Expression {
+      getInitialState() {
+        const dfas = this.dfas;
+        const dfaStates = new Array(dfas.length);
+        dfaStates.fill(START$2);
+        return {
+          dfaStates,
+          errors: [],
+          trace: [],
+          // maintain the index of the dfa which has been consumed the last token
+          lastDFA: 0
+        }
+      }
+
+      consume(state, token) {
+        const idx = this._findNextDFA(state, token);
+        if (idx < 0) {
+          state.errors.push({
+            msg: this._describeError(state, token)
+          });
+          return false
+        } else {
+          const dfa = this.dfas[idx];
+          const oldState = state.dfaStates[idx];
+          const newState = dfa.consume(oldState, token);
+          state.dfaStates[idx] = newState;
+          state.trace.push(token);
+          return true
+        }
+      }
+
+      isFinished(state) {
+        const dfas = this.dfas;
+        for (let i = 0; i < dfas.length; i++) {
+          const dfa = dfas[i];
+          const dfaState = state.dfaStates[i];
+          if (!dfa.isFinished(dfaState)) {
+            return false
+          }
+        }
         return true
       }
-    }
 
-    isFinished (state) {
-      return this.dfa.isFinished(state.dfaState)
-    }
+      _initialize() {
+        super._initialize();
 
-    _initialize () {
-      super._initialize();
-
-      this._computeAllowedChildren();
-    }
-
-    _compile () {
-      super._compile();
-      this.dfa = new DFA(this.root.dfa.transitions);
-    }
-
-    _computeAllowedChildren () {
-      this._allowedChildren = _collectAllTokensFromDFA(this.dfa);
-    }
-
-    _isValid (_tokens) {
-      let state = this.getInitialState();
-      for (let i = 0; i < _tokens.length; i++) {
-        const token = _tokens[i];
-        // Note: there might be some elements which
-        // are not relevant, such as empty text nodes
-        // or comments etc.
-        if (!token) continue
-        if (!this.consume(state, token)) {
-          return false
-        }
+        this._computeAllowedChildren();
       }
-      return this.isFinished(state)
-    }
-  }
 
-  function _collectAllTokensFromDFA (dfa) {
-    // Note: collecting all children
-    const children = {};
-    if (dfa.transitions) {
-      substance__default.forEach(dfa.transitions, (T) => {
-        Object.keys(T).forEach((tagName) => {
-          if (tagName === EPSILON$2) return
-          children[tagName] = true;
+      _compile() {
+        super._compile();
+
+        this.blocks = this.root.blocks;
+        this.dfas = this.blocks.map(b => new DFA(b.dfa.transitions));
+      }
+
+      _computeAllowedChildren() {
+        this._allowedChildren = Object.assign(...this.blocks.map((block) => {
+          return _collectAllTokensFromDFA(block.dfa)
+        }));
+      }
+
+      _findNextDFA(state, token) {
+        console.assert(state.dfaStates.length === this.dfas.length);
+        const dfas = this.dfas;
+        for (let i = 0; i < state.dfaStates.length; i++) {
+          const dfa = dfas[i];
+          const dfaState = state.dfaStates[i];
+          if (dfa.canConsume(dfaState, token)) {
+            return i
+          }
+        }
+        return -1
+      }
+    }
+
+    class Token {
+      constructor(name) {
+        this.name = name;
+      }
+
+      toString() {
+        return this.name
+      }
+
+      _compile() {
+        this.dfa = DFABuilder.singleToken(this.name);
+      }
+    }
+
+    class GroupExpression {
+      constructor(blocks) {
+        this.blocks = blocks;
+      }
+
+      toString() {
+        return '(' + this.blocks.map(b => b.toString()).join(this.token) + ')'
+      }
+    }
+
+    /*
+      (a|b|c)
+    */
+    class Choice extends GroupExpression {
+      // copy () {
+      //   return new Choice(this.blocks.map(b => b.copy()))
+      // }
+
+      // _normalize () {
+      //   const blocks = this.blocks
+      //   for (let i = blocks.length - 1; i >= 0; i--) {
+      //     let block = blocks[i]
+      //     block._normalize()
+      //     // unwrap doubled Choices
+      //     if (block instanceof Choice) {
+      //       blocks.splice(i, 1, ...(block.blocks))
+      //     }
+      //   }
+      // }
+
+      _compile() {
+        let dfa = new DFABuilder();
+        this.blocks.forEach((block) => {
+          if (block instanceof Token) {
+            dfa.addTransition(START$2, END$2, block.name);
+          } else if (block instanceof Interleave) {
+            throw new Error('Nested interleave blocks are not supported.')
+          } else {
+            if (!block.dfa) {
+              block._compile();
+            }
+            dfa.merge(block.dfa);
+          }
+        });
+        this.dfa = dfa;
+        return dfa
+      }
+
+      get token() { return Choice.token }
+
+      static get token() { return '|' }
+    }
+
+    /*
+      (a,b,c) (= ordered)
+    */
+    class Sequence extends GroupExpression {
+      // copy () {
+      //   return new Sequence(this.blocks.map(b => b.copy()))
+      // }
+
+      _compile() {
+        let dfa = new DFABuilder();
+        this.blocks.forEach((block) => {
+          if (block instanceof Token) {
+            dfa.append(DFABuilder.singleToken(block.name));
+          } else if (block instanceof Interleave) {
+            throw new Error('Nested interleave blocks are not supported.')
+          } else {
+            if (!block.dfa) {
+              block._compile();
+            }
+            dfa.append(block.dfa);
+          }
+        });
+        this.dfa = dfa;
+        return dfa
+      }
+
+      get token() { return Sequence.token }
+
+      static get token() { return ',' }
+    }
+
+    /*
+      ~(a,b,c) (= unordered)
+    */
+    class Interleave extends GroupExpression {
+      // copy () {
+      //   return new Interleave(this.blocks.map(b => b.copy()))
+      // }
+
+      toString() {
+        return '(' + this.blocks.map(b => b.toString()).join(', ') + ')[unordered]'
+      }
+
+      _normalize() { }
+
+      _compile() {
+        this.blocks.forEach(block => block._compile());
+      }
+
+      get token() { return Interleave.token }
+
+      static get token() { return '~' }
+    }
+
+    class BlockExpression {
+      constructor(block) {
+        this.block = block;
+      }
+
+      toString() {
+        return this.block.toString() + this.token
+      }
+    }
+
+    /*
+      ()?
+    */
+    class Optional extends BlockExpression {
+      // copy () {
+      //   return new Optional(this.block.copy())
+      // }
+
+      _compile() {
+        const block = this.block;
+        if (block instanceof Interleave) {
+          throw new Error('Nested interleave blocks are not supported.')
+        }
+        if (!block.dfa) {
+          block._compile();
+        }
+        this.dfa = block.dfa.optional();
+        return this.dfa
+      }
+
+      get token() { return Optional.token }
+
+      static get token() { return '?' }
+    }
+
+    /*
+      ()*
+    */
+    class Kleene extends BlockExpression {
+      // copy () {
+      //   return new Kleene(this.block.copy())
+      // }
+
+      _compile() {
+        const block = this.block;
+        if (block instanceof Interleave) {
+          throw new Error('Nested interleave blocks are not supported.')
+        }
+        if (!block.dfa) {
+          block._compile();
+        }
+        this.dfa = block.dfa.kleene();
+        return this.dfa
+      }
+
+      get token() { return Kleene.token }
+
+      static get token() { return '*' }
+    }
+
+    /*
+      ()+
+    */
+    class Plus extends BlockExpression {
+      // copy () {
+      //   return new Plus(this.block.copy())
+      // }
+
+      _compile() {
+        const block = this.block;
+        if (block instanceof Interleave) {
+          throw new Error('Nested interleave blocks are not supported.')
+        }
+        if (!block.dfa) {
+          block._compile();
+        }
+        this.dfa = block.dfa.plus();
+        return this.dfa
+      }
+
+      get token() { return Plus.token }
+
+      static get token() { return '+' }
+    }
+
+    const { TEXT: TEXT$2 } = DFA;
+
+    function analyze(elementSchemas) {
+      substance__default.forEach(elementSchemas, elementSchema => {
+        Object.assign(elementSchema, {
+          children: {},
+          parents: {},
+          siblings: {},
+          usedInlineBy: {},
+          usedStructuredBy: {}
         });
       });
+      substance__default.forEach(elementSchemas, elementSchema => {
+        _analyzeElementSchema(elementSchema, elementSchemas);
+      });
     }
-    return children
-  }
 
-  class InterleaveExpr extends Expression {
-    getInitialState () {
-      const dfas = this.dfas;
-      const dfaStates = new Array(dfas.length);
-      dfaStates.fill(START$2);
-      return {
-        dfaStates,
-        errors: [],
-        trace: [],
-        // maintain the index of the dfa which has been consumed the last token
-        lastDFA: 0
+    /*
+     We use this to detect automatically, if an
+     element is used as a text node or an element node,
+     or both at the same time.
+    */
+    function _analyzeElementSchema(elementSchema, elementSchemas) {
+      const expr = elementSchema.expr;
+      const name = elementSchema.name;
+      if (!expr) return
+      let _siblings = [];
+      if (expr instanceof DFAExpr) {
+        if (expr.dfa) {
+          _siblings = expr.dfa._tokensByPath();
+        }
+      } else if (expr instanceof InterleaveExpr) {
+        expr.dfas.forEach((dfa) => {
+          if (dfa) {
+            _siblings = _siblings.concat(dfa._tokensByPath());
+          }
+        });
+      }
+
+      let hasText = false;
+      let hasElements = false;
+      _siblings.forEach((tagNames) => {
+        // register each other as parent and children
+        let _hasText = tagNames.indexOf(TEXT$2) >= 0;
+        let _hasElements = (!_hasText && tagNames.length > 0);
+        if (_hasText) {
+          hasText = true;
+        }
+        if (_hasElements) {
+          hasElements = true;
+        }
+        tagNames.forEach((tagName) => {
+          const childSchema = elementSchemas[tagName];
+          if (!childSchema) return
+          childSchema.parents[name] = true;
+          elementSchema.children[tagName] = true;
+          // Note: we store siblings, grouped by parent
+          elementSchema.siblings[name] = tagNames;
+          if (_hasElements) childSchema.usedStructuredBy[name] = true;
+          if (_hasText) childSchema.usedInlineBy[name] = true;
+        });
+      });
+      // TODO: document what these fields are used for.
+      if (hasElements) elementSchema.isStructured = true;
+      if (hasText) elementSchema.isText = true;
+      if (!elementSchema.type) {
+        if (hasText) {
+          elementSchema.type = 'text';
+        } else {
+          elementSchema.type = 'element';
+        }
       }
     }
 
-    consume (state, token) {
-      const idx = this._findNextDFA(state, token);
-      if (idx < 0) {
-        state.errors.push({
-          msg: this._describeError(state, token)
-        });
-        return false
-      } else {
-        const dfa = this.dfas[idx];
-        const oldState = state.dfaStates[idx];
-        const newState = dfa.consume(oldState, token);
-        state.dfaStates[idx] = newState;
-        state.trace.push(token);
+    class ElementSchema {
+      constructor(name, type, attributes, expr) {
+        this.name = name;
+        this.type = type;
+        this.attributes = attributes;
+        this.expr = expr;
+      }
+    }
+
+    function _isTextNodeEmpty(el) {
+      return Boolean(/^\s*$/.exec(el.textContent))
+    }
+
+    function _validateElement(elementSchema, el) {
+      let errors = [];
+      let valid = true;
+      if (!elementSchema) {
+        return {
+          errors: [{
+            msg: `Unknown tag <${el.tagName}>.`,
+            el
+          }],
+          ok: false
+        }
+      }
+      // Elements
+      if (elementSchema.type === 'external' || elementSchema.type === 'not-implemented'); else {
+        let res = _checkChildren(elementSchema, el);
+        if (!res.ok) {
+          errors = errors.concat(res.errors);
+          valid = false;
+        }
+      }
+      return {
+        errors,
+        ok: valid
+      }
+    }
+
+    function _checkChildren(elementSchema, el) {
+      // Don't validate external nodes
+      if (elementSchema.type === 'external' || elementSchema.type === 'not-implemented') {
         return true
       }
-    }
-
-    isFinished (state) {
-      const dfas = this.dfas;
-      for (let i = 0; i < dfas.length; i++) {
-        const dfa = dfas[i];
-        const dfaState = state.dfaStates[i];
-        if (!dfa.isFinished(dfaState)) {
-          return false
-        }
-      }
-      return true
-    }
-
-    _initialize () {
-      super._initialize();
-
-      this._computeAllowedChildren();
-    }
-
-    _compile () {
-      super._compile();
-
-      this.blocks = this.root.blocks;
-      this.dfas = this.blocks.map(b => new DFA(b.dfa.transitions));
-    }
-
-    _computeAllowedChildren () {
-      this._allowedChildren = Object.assign(...this.blocks.map((block) => {
-        return _collectAllTokensFromDFA(block.dfa)
-      }));
-    }
-
-    _findNextDFA (state, token) {
-      console.assert(state.dfaStates.length === this.dfas.length);
-      const dfas = this.dfas;
-      for (let i = 0; i < state.dfaStates.length; i++) {
-        const dfa = dfas[i];
-        const dfaState = state.dfaStates[i];
-        if (dfa.canConsume(dfaState, token)) {
-          return i
-        }
-      }
-      return -1
-    }
-  }
-
-  class Token {
-    constructor (name) {
-      this.name = name;
-    }
-
-    toString () {
-      return this.name
-    }
-
-    _compile () {
-      this.dfa = DFABuilder.singleToken(this.name);
-    }
-  }
-
-  class GroupExpression {
-    constructor (blocks) {
-      this.blocks = blocks;
-    }
-
-    toString () {
-      return '(' + this.blocks.map(b => b.toString()).join(this.token) + ')'
-    }
-  }
-
-  /*
-    (a|b|c)
-  */
-  class Choice extends GroupExpression {
-    // copy () {
-    //   return new Choice(this.blocks.map(b => b.copy()))
-    // }
-
-    // _normalize () {
-    //   const blocks = this.blocks
-    //   for (let i = blocks.length - 1; i >= 0; i--) {
-    //     let block = blocks[i]
-    //     block._normalize()
-    //     // unwrap doubled Choices
-    //     if (block instanceof Choice) {
-    //       blocks.splice(i, 1, ...(block.blocks))
-    //     }
-    //   }
-    // }
-
-    _compile () {
-      let dfa = new DFABuilder();
-      this.blocks.forEach((block) => {
-        if (block instanceof Token) {
-          dfa.addTransition(START$2, END$2, block.name);
-        } else if (block instanceof Interleave) {
-          throw new Error('Nested interleave blocks are not supported.')
-        } else {
-          if (!block.dfa) {
-            block._compile();
+      const isText = elementSchema.type === 'text';
+      const expr = elementSchema.expr;
+      const state = expr.getInitialState();
+      const iterator = el.getChildNodeIterator();
+      let valid = true;
+      let tokenCount = 0;
+      while (valid && iterator.hasNext()) {
+        const childEl = iterator.next();
+        let token;
+        if (childEl.isTextNode()) {
+          // Note: skipping empty text being child node of elements
+          if (_isTextNodeEmpty(childEl)) {
+            continue
+          } else {
+            token = DFA.TEXT;
           }
-          dfa.merge(block.dfa);
-        }
-      });
-      this.dfa = dfa;
-      return dfa
-    }
-
-    get token () { return Choice.token }
-
-    static get token () { return '|' }
-  }
-
-  /*
-    (a,b,c) (= ordered)
-  */
-  class Sequence extends GroupExpression {
-    // copy () {
-    //   return new Sequence(this.blocks.map(b => b.copy()))
-    // }
-
-    _compile () {
-      let dfa = new DFABuilder();
-      this.blocks.forEach((block) => {
-        if (block instanceof Token) {
-          dfa.append(DFABuilder.singleToken(block.name));
-        } else if (block instanceof Interleave) {
-          throw new Error('Nested interleave blocks are not supported.')
-        } else {
-          if (!block.dfa) {
-            block._compile();
-          }
-          dfa.append(block.dfa);
-        }
-      });
-      this.dfa = dfa;
-      return dfa
-    }
-
-    get token () { return Sequence.token }
-
-    static get token () { return ',' }
-  }
-
-  /*
-    ~(a,b,c) (= unordered)
-  */
-  class Interleave extends GroupExpression {
-    // copy () {
-    //   return new Interleave(this.blocks.map(b => b.copy()))
-    // }
-
-    toString () {
-      return '(' + this.blocks.map(b => b.toString()).join(', ') + ')[unordered]'
-    }
-
-    _normalize () {}
-
-    _compile () {
-      this.blocks.forEach(block => block._compile());
-    }
-
-    get token () { return Interleave.token }
-
-    static get token () { return '~' }
-  }
-
-  class BlockExpression {
-    constructor (block) {
-      this.block = block;
-    }
-
-    toString () {
-      return this.block.toString() + this.token
-    }
-  }
-
-  /*
-    ()?
-  */
-  class Optional extends BlockExpression {
-    // copy () {
-    //   return new Optional(this.block.copy())
-    // }
-
-    _compile () {
-      const block = this.block;
-      if (block instanceof Interleave) {
-        throw new Error('Nested interleave blocks are not supported.')
-      }
-      if (!block.dfa) {
-        block._compile();
-      }
-      this.dfa = block.dfa.optional();
-      return this.dfa
-    }
-
-    get token () { return Optional.token }
-
-    static get token () { return '?' }
-  }
-
-  /*
-    ()*
-  */
-  class Kleene extends BlockExpression {
-    // copy () {
-    //   return new Kleene(this.block.copy())
-    // }
-
-    _compile () {
-      const block = this.block;
-      if (block instanceof Interleave) {
-        throw new Error('Nested interleave blocks are not supported.')
-      }
-      if (!block.dfa) {
-        block._compile();
-      }
-      this.dfa = block.dfa.kleene();
-      return this.dfa
-    }
-
-    get token () { return Kleene.token }
-
-    static get token () { return '*' }
-  }
-
-  /*
-    ()+
-  */
-  class Plus extends BlockExpression {
-    // copy () {
-    //   return new Plus(this.block.copy())
-    // }
-
-    _compile () {
-      const block = this.block;
-      if (block instanceof Interleave) {
-        throw new Error('Nested interleave blocks are not supported.')
-      }
-      if (!block.dfa) {
-        block._compile();
-      }
-      this.dfa = block.dfa.plus();
-      return this.dfa
-    }
-
-    get token () { return Plus.token }
-
-    static get token () { return '+' }
-  }
-
-  const { TEXT: TEXT$2 } = DFA;
-
-  function analyze (elementSchemas) {
-    substance__default.forEach(elementSchemas, elementSchema => {
-      Object.assign(elementSchema, {
-        children: {},
-        parents: {},
-        siblings: {},
-        usedInlineBy: {},
-        usedStructuredBy: {}
-      });
-    });
-    substance__default.forEach(elementSchemas, elementSchema => {
-      _analyzeElementSchema(elementSchema, elementSchemas);
-    });
-  }
-
-  /*
-   We use this to detect automatically, if an
-   element is used as a text node or an element node,
-   or both at the same time.
-  */
-  function _analyzeElementSchema (elementSchema, elementSchemas) {
-    const expr = elementSchema.expr;
-    const name = elementSchema.name;
-    if (!expr) return
-    let _siblings = [];
-    if (expr instanceof DFAExpr) {
-      if (expr.dfa) {
-        _siblings = expr.dfa._tokensByPath();
-      }
-    } else if (expr instanceof InterleaveExpr) {
-      expr.dfas.forEach((dfa) => {
-        if (dfa) {
-          _siblings = _siblings.concat(dfa._tokensByPath());
-        }
-      });
-    }
-
-    let hasText = false;
-    let hasElements = false;
-    _siblings.forEach((tagNames) => {
-      // register each other as parent and children
-      let _hasText = tagNames.indexOf(TEXT$2) >= 0;
-      let _hasElements = (!_hasText && tagNames.length > 0);
-      if (_hasText) {
-        hasText = true;
-      }
-      if (_hasElements) {
-        hasElements = true;
-      }
-      tagNames.forEach((tagName) => {
-        const childSchema = elementSchemas[tagName];
-        if (!childSchema) return
-        childSchema.parents[name] = true;
-        elementSchema.children[tagName] = true;
-        // Note: we store siblings, grouped by parent
-        elementSchema.siblings[name] = tagNames;
-        if (_hasElements) childSchema.usedStructuredBy[name] = true;
-        if (_hasText) childSchema.usedInlineBy[name] = true;
-      });
-    });
-    // TODO: document what these fields are used for.
-    if (hasElements) elementSchema.isStructured = true;
-    if (hasText) elementSchema.isText = true;
-    if (!elementSchema.type) {
-      if (hasText) {
-        elementSchema.type = 'text';
-      } else {
-        elementSchema.type = 'element';
-      }
-    }
-  }
-
-  class ElementSchema {
-    constructor (name, type, attributes, expr) {
-      this.name = name;
-      this.type = type;
-      this.attributes = attributes;
-      this.expr = expr;
-    }
-  }
-
-  function _isTextNodeEmpty (el) {
-    return Boolean(/^\s*$/.exec(el.textContent))
-  }
-
-  function _validateElement (elementSchema, el) {
-    let errors = [];
-    let valid = true;
-    if (!elementSchema) {
-      return {
-        errors: [ {
-          msg: `Unknown tag <${el.tagName}>.`,
-          el
-        } ],
-        ok: false
-      }
-    }
-    // Elements
-    if (elementSchema.type === 'external' || elementSchema.type === 'not-implemented') ; else {
-      let res = _checkChildren(elementSchema, el);
-      if (!res.ok) {
-        errors = errors.concat(res.errors);
-        valid = false;
-      }
-    }
-    return {
-      errors,
-      ok: valid
-    }
-  }
-
-  function _checkChildren (elementSchema, el) {
-    // Don't validate external nodes
-    if (elementSchema.type === 'external' || elementSchema.type === 'not-implemented') {
-      return true
-    }
-    const isText = elementSchema.type === 'text';
-    const expr = elementSchema.expr;
-    const state = expr.getInitialState();
-    const iterator = el.getChildNodeIterator();
-    let valid = true;
-    let tokenCount = 0;
-    while (valid && iterator.hasNext()) {
-      const childEl = iterator.next();
-      let token;
-      if (childEl.isTextNode()) {
-        // Note: skipping empty text being child node of elements
-        if (_isTextNodeEmpty(childEl)) {
-          continue
-        } else {
+        } else if (childEl.isElementNode()) {
+          token = childEl.tagName;
+        } else if (childEl.getNodeType() === 'cdata') {
+          // CDATA elements are treated as a TEXT fragment
           token = DFA.TEXT;
+        } else {
+          continue
         }
-      } else if (childEl.isElementNode()) {
-        token = childEl.tagName;
-      } else if (childEl.getNodeType() === 'cdata') {
-        // CDATA elements are treated as a TEXT fragment
-        token = DFA.TEXT;
-      } else {
-        continue
+        tokenCount++;
+        if (!expr.consume(state, token)) {
+          valid = false;
+        }
       }
-      tokenCount++;
-      if (!expr.consume(state, token)) {
-        valid = false;
-      }
-    }
-    // add the element to the errors
-    if (state.errors.length > 0) {
-      state.errors.forEach((err) => {
-        err.el = el;
-      });
-    }
-    const isFinished = expr.isFinished(state);
-    if (valid && !isFinished) {
-      if (isText && tokenCount === 0) ; else {
-        state.errors.push({
-          msg: `<${el.tagName}> is incomplete.\nSchema: ${expr.toString()}`,
-          el
+      // add the element to the errors
+      if (state.errors.length > 0) {
+        state.errors.forEach((err) => {
+          err.el = el;
         });
-        valid = false;
+      }
+      const isFinished = expr.isFinished(state);
+      if (valid && !isFinished) {
+        if (isText && tokenCount === 0); else {
+          state.errors.push({
+            msg: `<${el.tagName}> is incomplete.\nSchema: ${expr.toString()}`,
+            el
+          });
+          valid = false;
+        }
+      }
+      if (valid) {
+        state.ok = true;
+      }
+      return state
+    }
+
+    class XMLSchema {
+      constructor(elementSchemas, startElement, publicId, dtd) {
+        if (!elementSchemas[startElement]) {
+          throw new Error('startElement must be a valid element.')
+        }
+        this._elementSchemas = {};
+        this.startElement = startElement;
+        this.publicId = publicId;
+        this.dtd = dtd;
+        // wrap schemas into ElementSchemas
+        substance__default.forEach(elementSchemas, (spec, name) => {
+          this._elementSchemas[name] = new ElementSchema(spec.name, spec.type, spec.attributes, spec.expr);
+        });
+      }
+
+      getIdAttribute() {
+        return 'id'
+      }
+
+      getTagNames() {
+        return Object.keys(this._elementSchemas)
+      }
+
+      getDocTypeParams() {
+        return [this.startElement, this.publicId, this.dtd]
+      }
+
+      getElementSchema(name) {
+        return this._elementSchemas[name]
+      }
+
+      getStartElement() {
+        return this.startElement
+      }
+
+      validateElement(el) {
+        let tagName = el.tagName;
+        let elementSchema = this.getElementSchema(tagName);
+        return _validateElement(elementSchema, el)
       }
     }
-    if (valid) {
-      state.ok = true;
-    }
-    return state
-  }
 
-  class XMLSchema {
-    constructor (elementSchemas, startElement, publicId, dtd) {
-      if (!elementSchemas[startElement]) {
-        throw new Error('startElement must be a valid element.')
-      }
-      this._elementSchemas = {};
-      this.startElement = startElement;
-      this.publicId = publicId;
-      this.dtd = dtd;
-      // wrap schemas into ElementSchemas
-      substance__default.forEach(elementSchemas, (spec, name) => {
-        this._elementSchemas[name] = new ElementSchema(spec.name, spec.type, spec.attributes, spec.expr);
-      });
-    }
-
-    getIdAttribute () {
-      return 'id'
-    }
-
-    getTagNames () {
-      return Object.keys(this._elementSchemas)
-    }
-
-    getDocTypeParams () {
-      return [this.startElement, this.publicId, this.dtd]
-    }
-
-    getElementSchema (name) {
-      return this._elementSchemas[name]
-    }
-
-    getStartElement () {
-      return this.startElement
-    }
-
-    validateElement (el) {
-      let tagName = el.tagName;
-      let elementSchema = this.getElementSchema(tagName);
-      return _validateElement(elementSchema, el)
-    }
-  }
-
-  /**
-   * Look up a RNG file from the current directory or a list of search directories.
-   *
-   * @param {*} fs
-   * @param {*} rngFileName
-   * @param {*} currentDir
-   * @param {*} searchDirs
-   */
-  function _lookupRNG (fs, rngFileName, currentDir, searchDirs) {
-    let rngPath;
-    // 1. Try if the file can be found directly
-    rngPath = rngFileName;
-    if (fs.existsSync(rngPath)) {
-      return rngPath
-    }
-    // 2. Try the current directory
-    rngPath = currentDir + '/' + rngFileName;
-    if (fs.existsSync(rngPath)) {
-      return rngPath
-    }
-    // 3. Try the search directories
-    for (let i = 0; i < searchDirs.length; i++) {
-      rngPath = searchDirs[i] + '/' + rngFileName;
+    /**
+     * Look up a RNG file from the current directory or a list of search directories.
+     *
+     * @param {*} fs
+     * @param {*} rngFileName
+     * @param {*} currentDir
+     * @param {*} searchDirs
+     */
+    function _lookupRNG(fs, rngFileName, currentDir, searchDirs) {
+      let rngPath;
+      // 1. Try if the file can be found directly
+      rngPath = rngFileName;
       if (fs.existsSync(rngPath)) {
         return rngPath
       }
-    }
-  }
-
-  function _expandIncludes (fs, path, currentDir, searchDirs, grammarEl) {
-    let includes = grammarEl.findAll('include');
-    if (includes.length === 0) return false
-    includes.forEach(include => {
-      const parent = include.parentNode;
-      const href = include.attr('href');
-      const rngPath = _lookupRNG(fs, href, currentDir, searchDirs);
-      if (!rngPath) throw new Error(`Could not find ${href}`)
-      const rngStr = fs.readFileSync(rngPath, 'utf8');
-      const rng = substance__default.DefaultDOMElement.parseXML(rngStr, 'full-doc');
-      const _grammarEl = rng.find('grammar');
-      if (!_grammarEl) throw new Error('No grammar element found')
-      let rngDir = path.dirname(rngPath);
-      // expand the grammar recursively
-      _expandIncludes(fs, path, rngDir, searchDirs, _grammarEl);
-      // now replace the include element with the content of the expanded grammar
-      _grammarEl.children.forEach((child) => {
-        parent.insertBefore(child, include);
-      });
-      include.remove();
-    });
-    return true
-  }
-
-  /*
-    Loads a RNG with all dependencies into a DOM element
-  */
-  function _loadRNG (fs, path, rngFile, searchDirs) {
-    if (!substance__default.isArray(searchDirs)) searchDirs = [searchDirs];
-    let rngDir = path.dirname(rngFile);
-    let rngStr = fs.readFileSync(rngFile, 'utf8');
-    const rng = substance__default.DefaultDOMElement.parseXML(rngStr, 'full-doc');
-    const grammarEl = rng.find('grammar');
-    _expandIncludes(fs, path, rngDir, searchDirs, grammarEl);
-    return rng
-  }
-
-  // import prettyPrintXML from './prettyPrintXML'
-
-  const TEXT$3 = DFA.TEXT;
-
-  /*
-    We use regular RNG, with slight restrictions plus custom extensions,
-    and compile it into our internal format.
-  */
-  function _compileRNG (fs, path, rngFile, searchDirs) {
-    let rng = _loadRNG(fs, path, rngFile, searchDirs);
-    let grammar = rng.find('grammar');
-    if (!grammar) throw new Error('<grammar> not found.')
-    // collect all definitions, allowing for custom overrides
-    _registerDefinitions(grammar);
-    // turn the RNG schema into our internal data structure
-    let transformedGrammar = _transformRNG(grammar);
-    // console.log(prettyPrintXML(transformedGrammar))
-    let xmlSchema = _compile(transformedGrammar);
-    return xmlSchema
-  }
-
-  /* Registration of <define> elements */
-
-  function _registerDefinitions (grammar) {
-    let defs = {};
-    // NOTE: definitions are only considered on the top level
-    grammar.children.forEach(child => {
-      const tagName = substance__default.nameWithoutNS(child.tagName);
-      if (tagName === 'define') {
-        _processDefine(child, defs);
+      // 2. Try the current directory
+      rngPath = currentDir + '/' + rngFileName;
+      if (fs.existsSync(rngPath)) {
+        return rngPath
       }
-    });
-    grammar.defs = defs;
-  }
-
-  function _processDefine (el, defs) {
-    const name = el.attr('name');
-    const combine = el.attr('combine');
-    if (combine === 'interleave') {
-      if (defs[name]) {
-        defs[name].append(el.children);
-      } else {
-        defs[name] = el;
-      }
-    } else {
-      if (defs[name]) ;
-      defs[name] = el;
-    }
-  }
-
-  /* Transformation of RNG into internal representation */
-  function _transformRNG (grammar) {
-    const $$ = grammar.createElement.bind(grammar);
-    // remove everything elements from the grammar that have been tagged as 's:removed'
-    grammar.findAll('removed').forEach(el => {
-      let name = el.attr('name');
-      grammar.findAll(`element[name="${name}"]`).forEach(el => {
-        // console.log('removing <element>', name)
-        el.remove();
-      });
-      grammar.findAll(`ref[name="${name}"]`).forEach(el => {
-        // console.log('removing <ref>', name)
-        el.remove();
-      });
-    });
-
-    const elements = {};
-    const defs = grammar.defs;
-    const elementDefinitions = grammar.findAll('define > element');
-    const doc = substance__default.DefaultDOMElement.createDocument('xml');
-    const newGrammar = doc.createElement('grammar');
-
-    // record all not implemented ones
-    // we will allow to use them, but skip their content definition
-    const notImplemented = grammar.findAll('not-implemented').reduce((s, el) => {
-      let name = el.attr('name');
-      if (name) s.add(name);
-      return s
-    }, new Set());
-
-    // expand definitions
-    elementDefinitions.forEach(el => {
-      const name = el.attr('name');
-      if (!name) throw new Error("'name' is mandatory.")
-      let transformed;
-      if (notImplemented.has(name)) {
-        transformed = $$('element').attr('name', name).attr('type', 'not-implemented');
-      } else {
-        transformed = _transformElementDefinition(doc, name, el, defs);
-      }
-      elements[name] = transformed;
-      newGrammar.appendChild(transformed);
-    });
-
-    // infer element types
-    // TODO: do we need this anymore?
-    const elementTypes = grammar.findAll('elementType');
-    elementTypes.forEach(typeEl => {
-      const name = typeEl.attr('name');
-      let type = typeEl.attr('s:type') || typeEl.attr('type');
-      if (!name || !type) throw new Error('Attributes name and type are mandatory.')
-      const element = elements[name];
-      if (!element) throw new Error(`Unknown element ${name}.`)
-      element.attr('type', type);
-    });
-
-    // start element
-    const startElement = _extractStart(grammar);
-    if (!startElement) throw new Error('<start> is mandatory.')
-    newGrammar.appendChild(doc.createElement('start').attr('name', startElement));
-
-    return newGrammar
-  }
-
-  function _transformElementDefinition (doc, name, orig, defs) {
-    let el = doc.createElement('element').attr('name', name);
-    // TODO: try to separate attributes from children
-    // now go through all children and wrap them into attributes and children
-    let attributes = doc.createElement('attributes');
-    let children = doc.createElement('children');
-    orig.children.forEach((child) => {
-      let block = _transformBlock(doc, child, defs, {});
-      block.forEach((el) => {
-        if (el.find('attribute') || el.is('attribute')) {
-          attributes.appendChild(el);
-        } else {
-          children.appendChild(el);
+      // 3. Try the search directories
+      for (let i = 0; i < searchDirs.length; i++) {
+        rngPath = searchDirs[i] + '/' + rngFileName;
+        if (fs.existsSync(rngPath)) {
+          return rngPath
         }
+      }
+    }
+
+    function _expandIncludes(fs, path, currentDir, searchDirs, grammarEl) {
+      let includes = grammarEl.findAll('include');
+      if (includes.length === 0) return false
+      includes.forEach(include => {
+        const parent = include.parentNode;
+        const href = include.attr('href');
+        const rngPath = _lookupRNG(fs, href, currentDir, searchDirs);
+        if (!rngPath) throw new Error(`Could not find ${href}`)
+        const rngStr = fs.readFileSync(rngPath, 'utf8');
+        const rng = substance__default.DefaultDOMElement.parseXML(rngStr, 'full-doc');
+        const _grammarEl = rng.find('grammar');
+        if (!_grammarEl) throw new Error('No grammar element found')
+        let rngDir = path.dirname(rngPath);
+        // expand the grammar recursively
+        _expandIncludes(fs, path, rngDir, searchDirs, _grammarEl);
+        // now replace the include element with the content of the expanded grammar
+        _grammarEl.children.forEach((child) => {
+          parent.insertBefore(child, include);
+        });
+        include.remove();
       });
-    });
-    el.appendChild(attributes);
-    el.appendChild(children);
+      return true
+    }
 
     /*
-      Pruning (this is probably very slow!)
-      - choice > choice
-      - choice with one element
+      Loads a RNG with all dependencies into a DOM element
     */
-    while (true) {
-      // Unwrap nested choices
-      let nestedChoice = children.find('choice > choice');
-      if (nestedChoice) {
-        // unwrap onto parent level
-        let parentChoice = nestedChoice.parentNode;
-        // TODO: we could use DOM helpers as we do in Texture converters
-        let children = nestedChoice.children;
-        children.forEach((child) => {
-          parentChoice.insertBefore(child, nestedChoice);
-        });
-        parentChoice.removeChild(nestedChoice);
-        continue
-      }
-      break
+    function _loadRNG(fs, path, rngFile, searchDirs) {
+      if (!substance__default.isArray(searchDirs)) searchDirs = [searchDirs];
+      let rngDir = path.dirname(rngFile);
+      let rngStr = fs.readFileSync(rngFile, 'utf8');
+      const rng = substance__default.DefaultDOMElement.parseXML(rngStr, 'full-doc');
+      const grammarEl = rng.find('grammar');
+      _expandIncludes(fs, path, rngDir, searchDirs, grammarEl);
+      return rng
     }
 
-    // Simplify singular choices
-    let choices = children.findAll('choice');
-    for (let i = 0; i < choices.length; i++) {
-      let choice = choices[i];
-      let children = choice.children;
-      if (children.length === 1) {
-        choice.parentNode.replaceChild(choice, children[0]);
-      }
+    // import prettyPrintXML from './prettyPrintXML'
+
+    const TEXT$3 = DFA.TEXT;
+
+    /*
+      We use regular RNG, with slight restrictions plus custom extensions,
+      and compile it into our internal format.
+    */
+    function _compileRNG(fs, path, rngFile, searchDirs) {
+      let rng = _loadRNG(fs, path, rngFile, searchDirs);
+      let grammar = rng.find('grammar');
+      if (!grammar) throw new Error('<grammar> not found.')
+      // collect all definitions, allowing for custom overrides
+      _registerDefinitions(grammar);
+      // turn the RNG schema into our internal data structure
+      let transformedGrammar = _transformRNG(grammar);
+      // console.log(prettyPrintXML(transformedGrammar))
+      let xmlSchema = _compile(transformedGrammar);
+      return xmlSchema
     }
 
-    let optionalTextEls = children.findAll('optional > text, zeroOrMore > text');
-    for (let i = 0; i < optionalTextEls.length; i++) {
-      let textEl = optionalTextEls[i];
-      let optionalEl = textEl.parentNode;
-      if (optionalEl.getChildCount() === 1) {
-        optionalEl.parentNode.replaceChild(optionalEl, textEl);
-      }
-    }
+    /* Registration of <define> elements */
 
-    // remove empty groups
-    let groupEls = children.findAll('optional, zeroOrMore, oneOrMore');
-    for (let i = 0; i < groupEls.length; i++) {
-      let groupEl = groupEls[i];
-      if (groupEl.getChildCount() === 0) {
-        groupEl.remove();
-      }
-    }
-
-    return el
-  }
-
-  function _transformBlock (doc, block, defs, visiting = {}) {
-    // if a block is a <ref> return the expanded children
-    // otherwise clone the block and descend recursively
-    const tagName = block.tagName;
-    switch (tagName) {
-      case 'element': {
-        return [doc.createElement('element').attr('name', block.attr('name'))]
-      }
-      case 'ref': {
-        return _expandRef(doc, block, defs, visiting)
-      }
-      case 'empty':
-      case 'notAllowed': {
-        return []
-      }
-      default: {
-        // TODO: while this is a valid approach, it could be more efficient
-        // to 'reuse' already processed elements (i.e. reuse their DFA)
-        // For that reason, I have commented out all occurrences where I used to resuse the DFA
-        // being dead code at the moment
-        let clone = block.clone(false);
-        block.children.forEach((child) => {
-          clone.append(_transformBlock(doc, child, defs, visiting));
-        });
-        return [clone]
-      }
-    }
-  }
-
-  function _expandRef (doc, ref, defs, visiting = {}) {
-    const name = ref.attr('name');
-    // Acquire semaphore against cyclic refs
-    if (visiting[name]) {
-      throw new Error('Cyclic references are not supported.')
-    }
-    visiting[name] = true;
-
-    const def = defs[name];
-    if (!def) throw new Error(`Unknown definition ${name}`)
-
-    let expanded = [];
-    let children = def.children;
-    children.forEach((child) => {
-      let transformed = _transformBlock(doc, child, defs, visiting);
-      expanded = expanded.concat(transformed);
-    });
-
-    // Releasing semaphore against cyclic refs
-    delete visiting[name];
-    return expanded
-  }
-
-  function _extractStart (grammar) {
-    // for now this is hard wired to work with the start
-    // element as defined in JATS 1.1
-    const start = grammar.find('start');
-    if (!start) {
-      throw new Error('<grammar> must have a <start> element')
-    }
-    // HACK: we assume that there is exactly one ref to
-    // an element definition
-    const startRef = start.find('ref');
-    if (!startRef) {
-      throw new Error('Expecting one <ref> inside of <start>.')
-    }
-    const name = startRef.attr('name');
-    return name
-  }
-
-  function _compile (grammar) {
-    const schemas = {};
-    const elements = grammar.children.filter(el => el.tagName === 'element');
-    elements.forEach(element => {
-      const name = element.attr('name');
-      const attributes = _collectAttributes(element.find('attributes'));
-      const children = element.find('children');
-      const type = element.attr('type');
-      let block = _processChildren(children, grammar);
-      let expr = createExpression(name, block);
-      let schema = { name, type, attributes, expr };
-      schemas[name] = schema;
-    });
-
-    // this adds some reflection info and derives the type
-    analyze(schemas);
-
-    const start = grammar.find('start');
-    if (!start) {
-      throw new Error('<start> is mandatory')
-    }
-    const startElement = start.attr('name');
-    if (!startElement) {
-      throw new Error('<start> must have "name" set')
-    }
-    return new XMLSchema(schemas, startElement)
-  }
-
-  function _processChildren (el, grammar) {
-    if (!el) return new Sequence([])
-    let blocks = _processBlocks(el.children, grammar);
-    if (blocks.length === 1) {
-      return blocks[0]
-    } else {
-      return new Sequence(blocks)
-    }
-  }
-
-  function _processBlocks (children, grammar) {
-    const blocks = [];
-    for (var i = 0; i < children.length; i++) {
-      const child = children[i];
-      // const name = child.attr('name')
-      switch (child.tagName) {
-        // skip these
-        case 'attribute':
-        case 'empty':
-        case 'notAllowed': {
-          break
+    function _registerDefinitions(grammar) {
+      let defs = {};
+      // NOTE: definitions are only considered on the top level
+      grammar.children.forEach(child => {
+        const tagName = substance__default.nameWithoutNS(child.tagName);
+        if (tagName === 'define') {
+          _processDefine(child, defs);
         }
-        case 'element': {
-          const elName = child.attr('name');
-          blocks.push(new Token(elName));
-          break
-        }
-        case 'text': {
-          blocks.push(new Token(TEXT$3));
-          break
-        }
-        case 'ref': {
-          const block = _processReference(child, grammar);
-          blocks.push(block);
-          break
-        }
-        case 'group': {
-          blocks.push(_processSequence(child, grammar));
-          break
-        }
-        case 'choice': {
-          const block = _processChoice(child, grammar);
-          blocks.push(block);
-          break
-        }
-        case 'optional': {
-          const block = new Optional(_processChildren(child, grammar));
-          blocks.push(block);
-          break
-        }
-        case 'oneOrMore': {
-          const block = new Plus(_processChildren(child, grammar));
-          blocks.push(block);
-          break
-        }
-        case 'zeroOrMore': {
-          const block = new Kleene(_processChildren(child, grammar));
-          blocks.push(block);
-          break
-        }
-        case 'interleave': {
-          const block = new Interleave(_processBlocks(child.children, grammar));
-          blocks.push(block);
-          break
-        }
-        default:
-          throw new Error('Not supported yet: ' + child.tagName)
-      }
-    }
-    return blocks
-  }
-
-  function _processSequence (el, grammar) {
-    // TODO: seems that this optimization is not needed any more as references get inlined.
-    // looking at _expandRef() it looks as though the corresponding DOMElement gets cloned on recursion
-    // see above
-    // if (el.expr) return el.expr.copy()
-    const blocks = _processBlocks(el.children, grammar);
-    el.expr = new Sequence(blocks);
-    return el.expr
-  }
-
-  function _processChoice (el, grammar) {
-    // if (el.expr) return el.expr.copy()
-    let blocks = _processBlocks(el.children, grammar);
-    el.expr = new Choice(blocks);
-    return el.expr
-  }
-
-  function _processReference (ref, grammar) {
-    const name = ref.attr('name');
-    const def = grammar.defs[name];
-    if (!def) throw new Error(`Illegal ref: ${name} is not defined.`)
-    // if (def.expr) return def.expr.copy()
-    // Guard for cyclic references
-    // TODO: what to do with cyclic refs?
-    if (grammar._visiting[name]) {
-      throw new Error('Cyclic references are not supported yet')
-    }
-    grammar._visiting[name] = true;
-    const block = _processChildren(def, grammar);
-    def.expr = block;
-    delete grammar._visiting[name];
-    return def.expr
-  }
-
-  function _collectAttributes (el, grammar, attributes = {}) {
-    if (!el) return {}
-    // ATTENTION: RNG supports more than we do here
-    // We just collect all attributes, infering no rules
-    let children = el.children;
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i];
-      switch (child.tagName) {
-        case 'attribute': {
-          const attr = _transformAttribute(child);
-          attributes[attr.name] = attr;
-          break
-        }
-        case 'group':
-        case 'choice':
-        case 'optional':
-        case 'oneOrMore':
-        case 'zeroOrMore': {
-          _collectAttributes(child, grammar, attributes);
-          break
-        }
-        default:
-          //
-      }
-    }
-    return attributes
-  }
-
-  function _transformAttribute (el) {
-    const name = el.attr('name');
-    // TODO: extract all the attribute specs
-    return {
-      name
-    }
-  }
-
-  function validateXML (xmlSchema, dom) {
-    let root = dom.find(xmlSchema.getStartElement());
-    if (!root) {
-      return {
-        errors: [{
-          msg: 'Start element is missing.',
-          el: dom
-        }]
-      }
-    } else {
-      return validateElement(xmlSchema, root)
-    }
-  }
-
-  function validateElement (xmlSchema, el) {
-    let errors = [];
-    let valid = true;
-    let q = [el];
-    while (q.length > 0) {
-      let next = q.shift();
-      let res = xmlSchema.validateElement(next);
-      if (!res.ok) {
-        errors = errors.concat(res.errors);
-        valid = false;
-      }
-      if (next.isElementNode()) {
-        q = q.concat(next.getChildren());
-      }
-    }
-    return {
-      errors: errors,
-      ok: valid
-    }
-  }
-
-  /**
-   * This implementation is creating a minified representation of a Schema.
-   *
-   * ```
-   * [ [<string-literals...>], <rootElId>, [<elements...>] ]
-   *
-   * element: [ <nameId>, [<attributes...>], <content> ]
-   * attribute: <nameId> (temporarily)
-   * content: [<type>:'*?+si', []|<nameId> ]
-   * ```
-   */
-
-  class LiteralRegistry {
-    constructor () {
-      this._map = new Map();
-    }
-
-    register (literal) {
-      if (!this._map.has(literal)) {
-        this._map.set(literal, { literal, count: 0 });
-      }
-      this._map.get(literal).count++;
-    }
-
-    computeRanks () {
-      let entries = Array.from(this._map.values());
-      entries.sort((a, b) => {
-        return b.count - a.count
       });
-      let L = entries.length;
-      for (let idx = 0; idx < L; idx++) {
-        entries[idx].rank = idx;
-      }
-      this._sortedLiterals = entries.map(e => e.literal);
+      grammar.defs = defs;
     }
 
-    getRank (literal) {
-      return this._map.get(literal).rank
-    }
-
-    getSortedLiterals () {
-      return this._sortedLiterals
-    }
-  }
-
-  function serializeXMLSchema (xmlSchema) {
-    let literalRegistry = new LiteralRegistry();
-
-    function _registerLiterals (o) {
-      switch (o.constructor) {
-        case XMLSchema: {
-          literalRegistry.register(o.startElement);
-          o.getTagNames().forEach(name => {
-            _registerLiterals(o.getElementSchema(name));
-          });
-          break
-        }
-        case ElementSchema: {
-          literalRegistry.register(o.name);
-          Object.keys(o.attributes).forEach(attrName => {
-            // TODO: later we should also register attribute values
-            literalRegistry.register(attrName);
-          });
-          _registerLiterals(o.expr);
-          break
-        }
-        case DFAExpr:
-        case InterleaveExpr: {
-          _registerLiterals(o.root);
-          break
-        }
-        case Token: {
-          literalRegistry.register(o.name);
-          break
-        }
-        case Choice:
-        case Sequence:
-        case Interleave: {
-          o.blocks.forEach(_registerLiterals);
-          break
-        }
-        case Optional:
-        case Kleene:
-        case Plus: {
-          _registerLiterals(o.block);
-          break
-        }
-        default:
-          throw new Error('FIXME')
-      }
-    }
-    _registerLiterals(xmlSchema);
-
-    literalRegistry.computeRanks();
-
-    function _encode (o) {
-      switch (o.constructor) {
-        case XMLSchema: {
-          return [
-            literalRegistry.getRank(o.startElement),
-            o.getTagNames().map(name => {
-              return _encode(o.getElementSchema(name))
-            })
-          ]
-        }
-        case ElementSchema: {
-          return [
-            literalRegistry.getRank(o.name),
-            o.type === 'text' ? 't' : 'e',
-            Object.keys(o.attributes).map(attrName => {
-              // TODO: later we should also register attribute values
-              return literalRegistry.getRank(attrName)
-            }),
-            _encode(o.expr)
-          ]
-        }
-        case DFAExpr:
-        case InterleaveExpr: {
-          return _encode(o.root)
-        }
-        case Token: {
-          return literalRegistry.getRank(o.name)
-        }
-        case Choice:
-        case Sequence:
-        case Interleave: {
-          return [
-            o.token,
-            o.blocks.map(_encode)
-          ]
-        }
-        case Optional:
-        case Kleene:
-        case Plus: {
-          return [
-            o.token,
-            _encode(o.block)
-          ]
-        }
-      }
-    }
-    let data = { literals: literalRegistry.getSortedLiterals(), schema: _encode(xmlSchema) };
-
-    return JSON.stringify(data)
-  }
-
-  function deserializeXMLSchema (xmlSchemaInput, publicId = '', dtd = '') {
-    let data;
-    if (substance__default.isString(xmlSchemaInput)) {
-      data = JSON.parse(xmlSchemaInput);
-    } else {
-      data = xmlSchemaInput;
-    }
-    let literals = data.literals;
-    let schemaData = data.schema;
-
-    function _decodeLiteral (d) {
-      return literals[d]
-    }
-
-    let startElement = _decodeLiteral(schemaData[0]);
-    let elementSchemas = {};
-
-    function _decodeExpression (d) {
-      if (substance__default.isNumber(d)) {
-        return new Token(_decodeLiteral(d))
-      } else if (substance__default.isArray(d)) {
-        let type = d[0];
-        let content = d[1];
-        switch (type) {
-          case Sequence.token:
-            return new Sequence(content.map(_decodeExpression))
-          case Interleave.token:
-            return new Interleave(content.map(_decodeExpression))
-          case Choice.token:
-            return new Choice(content.map(_decodeExpression))
-          case Optional.token:
-            return new Optional(_decodeExpression(content))
-          case Plus.token:
-            return new Plus(_decodeExpression(content))
-          case Kleene.token:
-            return new Kleene(_decodeExpression(content))
+    function _processDefine(el, defs) {
+      const name = el.attr('name');
+      const combine = el.attr('combine');
+      if (combine === 'interleave') {
+        if (defs[name]) {
+          defs[name].append(el.children);
+        } else {
+          defs[name] = el;
         }
       } else {
-        throw new Error('invalid data')
+        if (defs[name]);
+        defs[name] = el;
       }
     }
 
-    function _decodeElementSchemaData (d) {
-      let name = _decodeLiteral(d[0]);
-      let type = d[1] === 't' ? 'text' : 'element';
-      // TODO: at some point we gonna have more complex attribute specs
-      let attributes = {};
-      d[2].forEach(rank => {
-        let literal = _decodeLiteral(rank);
-        attributes[literal] = literal;
+    /* Transformation of RNG into internal representation */
+    function _transformRNG(grammar) {
+      const $$ = grammar.createElement.bind(grammar);
+      // remove everything elements from the grammar that have been tagged as 's:removed'
+      grammar.findAll('removed').forEach(el => {
+        let name = el.attr('name');
+        grammar.findAll(`element[name="${name}"]`).forEach(el => {
+          // console.log('removing <element>', name)
+          el.remove();
+        });
+        grammar.findAll(`ref[name="${name}"]`).forEach(el => {
+          // console.log('removing <ref>', name)
+          el.remove();
+        });
       });
-      let expr = createExpression(name, _decodeExpression(d[3]));
-      return new ElementSchema(name, type, attributes, expr)
+
+      const elements = {};
+      const defs = grammar.defs;
+      const elementDefinitions = grammar.findAll('define > element');
+      const doc = substance__default.DefaultDOMElement.createDocument('xml');
+      const newGrammar = doc.createElement('grammar');
+
+      // record all not implemented ones
+      // we will allow to use them, but skip their content definition
+      const notImplemented = grammar.findAll('not-implemented').reduce((s, el) => {
+        let name = el.attr('name');
+        if (name) s.add(name);
+        return s
+      }, new Set());
+
+      // expand definitions
+      elementDefinitions.forEach(el => {
+        const name = el.attr('name');
+        if (!name) throw new Error("'name' is mandatory.")
+        let transformed;
+        if (notImplemented.has(name)) {
+          transformed = $$('element').attr('name', name).attr('type', 'not-implemented');
+        } else {
+          transformed = _transformElementDefinition(doc, name, el, defs);
+        }
+        elements[name] = transformed;
+        newGrammar.appendChild(transformed);
+      });
+
+      // infer element types
+      // TODO: do we need this anymore?
+      const elementTypes = grammar.findAll('elementType');
+      elementTypes.forEach(typeEl => {
+        const name = typeEl.attr('name');
+        let type = typeEl.attr('s:type') || typeEl.attr('type');
+        if (!name || !type) throw new Error('Attributes name and type are mandatory.')
+        const element = elements[name];
+        if (!element) throw new Error(`Unknown element ${name}.`)
+        element.attr('type', type);
+      });
+
+      // start element
+      const startElement = _extractStart(grammar);
+      if (!startElement) throw new Error('<start> is mandatory.')
+      newGrammar.appendChild(doc.createElement('start').attr('name', startElement));
+
+      return newGrammar
     }
 
-    schemaData[1].forEach(elementSchemaData => {
-      let elementSchema = _decodeElementSchemaData(elementSchemaData);
-      elementSchemas[elementSchema.name] = elementSchema;
-    });
+    function _transformElementDefinition(doc, name, orig, defs) {
+      let el = doc.createElement('element').attr('name', name);
+      // TODO: try to separate attributes from children
+      // now go through all children and wrap them into attributes and children
+      let attributes = doc.createElement('attributes');
+      let children = doc.createElement('children');
+      orig.children.forEach((child) => {
+        let block = _transformBlock(doc, child, defs, {});
+        block.forEach((el) => {
+          if (el.find('attribute') || el.is('attribute')) {
+            attributes.appendChild(el);
+          } else {
+            children.appendChild(el);
+          }
+        });
+      });
+      el.appendChild(attributes);
+      el.appendChild(children);
 
-    let schema = new XMLSchema(elementSchemas, startElement, publicId, dtd);
-    return schema
-  }
+      /*
+        Pruning (this is probably very slow!)
+        - choice > choice
+        - choice with one element
+      */
+      while (true) {
+        // Unwrap nested choices
+        let nestedChoice = children.find('choice > choice');
+        if (nestedChoice) {
+          // unwrap onto parent level
+          let parentChoice = nestedChoice.parentNode;
+          // TODO: we could use DOM helpers as we do in Texture converters
+          let children = nestedChoice.children;
+          children.forEach((child) => {
+            parentChoice.insertBefore(child, nestedChoice);
+          });
+          parentChoice.removeChild(nestedChoice);
+          continue
+        }
+        break
+      }
 
-  exports._analyzeSchema = analyze;
-  exports._compileRNG = _compileRNG;
-  exports._expandIncludes = _expandIncludes;
-  exports._isTextNodeEmpty = _isTextNodeEmpty;
-  exports._loadRNG = _loadRNG;
-  exports._lookupRNG = _lookupRNG;
-  exports.DFA = DFA;
-  exports.DFABuilder = DFABuilder;
-  exports.validateXML = validateXML;
-  exports.XMLSchema = XMLSchema;
-  exports.serializeXMLSchema = serializeXMLSchema;
-  exports.deserializeXMLSchema = deserializeXMLSchema;
+      // Simplify singular choices
+      let choices = children.findAll('choice');
+      for (let i = 0; i < choices.length; i++) {
+        let choice = choices[i];
+        let children = choice.children;
+        if (children.length === 1) {
+          choice.parentNode.replaceChild(choice, children[0]);
+        }
+      }
+
+      let optionalTextEls = children.findAll('optional > text, zeroOrMore > text');
+      for (let i = 0; i < optionalTextEls.length; i++) {
+        let textEl = optionalTextEls[i];
+        let optionalEl = textEl.parentNode;
+        if (optionalEl.getChildCount() === 1) {
+          optionalEl.parentNode.replaceChild(optionalEl, textEl);
+        }
+      }
+
+      // remove empty groups
+      let groupEls = children.findAll('optional, zeroOrMore, oneOrMore');
+      for (let i = 0; i < groupEls.length; i++) {
+        let groupEl = groupEls[i];
+        if (groupEl.getChildCount() === 0) {
+          groupEl.remove();
+        }
+      }
+
+      return el
+    }
+
+    function _transformBlock(doc, block, defs, visiting = {}) {
+      // if a block is a <ref> return the expanded children
+      // otherwise clone the block and descend recursively
+      const tagName = block.tagName;
+      switch (tagName) {
+        case 'element': {
+          return [doc.createElement('element').attr('name', block.attr('name'))]
+        }
+        case 'ref': {
+          return _expandRef(doc, block, defs, visiting)
+        }
+        case 'empty':
+        case 'notAllowed': {
+          return []
+        }
+        default: {
+          // TODO: while this is a valid approach, it could be more efficient
+          // to 'reuse' already processed elements (i.e. reuse their DFA)
+          // For that reason, I have commented out all occurrences where I used to resuse the DFA
+          // being dead code at the moment
+          let clone = block.clone(false);
+          block.children.forEach((child) => {
+            clone.append(_transformBlock(doc, child, defs, visiting));
+          });
+          return [clone]
+        }
+      }
+    }
+
+    function _expandRef(doc, ref, defs, visiting = {}) {
+      const name = ref.attr('name');
+      // Acquire semaphore against cyclic refs
+      if (visiting[name]) {
+        throw new Error('Cyclic references are not supported.')
+      }
+      visiting[name] = true;
+
+      const def = defs[name];
+      if (!def) throw new Error(`Unknown definition ${name}`)
+
+      let expanded = [];
+      let children = def.children;
+      children.forEach((child) => {
+        let transformed = _transformBlock(doc, child, defs, visiting);
+        expanded = expanded.concat(transformed);
+      });
+
+      // Releasing semaphore against cyclic refs
+      delete visiting[name];
+      return expanded
+    }
+
+    function _extractStart(grammar) {
+      // for now this is hard wired to work with the start
+      // element as defined in JATS 1.1
+      const start = grammar.find('start');
+      if (!start) {
+        throw new Error('<grammar> must have a <start> element')
+      }
+      // HACK: we assume that there is exactly one ref to
+      // an element definition
+      const startRef = start.find('ref');
+      if (!startRef) {
+        throw new Error('Expecting one <ref> inside of <start>.')
+      }
+      const name = startRef.attr('name');
+      return name
+    }
+
+    function _compile(grammar) {
+      const schemas = {};
+      const elements = grammar.children.filter(el => el.tagName === 'element');
+      elements.forEach(element => {
+        const name = element.attr('name');
+        const attributes = _collectAttributes(element.find('attributes'));
+        const children = element.find('children');
+        const type = element.attr('type');
+        let block = _processChildren(children, grammar);
+        let expr = createExpression(name, block);
+        let schema = { name, type, attributes, expr };
+        schemas[name] = schema;
+      });
+
+      // this adds some reflection info and derives the type
+      analyze(schemas);
+
+      const start = grammar.find('start');
+      if (!start) {
+        throw new Error('<start> is mandatory')
+      }
+      const startElement = start.attr('name');
+      if (!startElement) {
+        throw new Error('<start> must have "name" set')
+      }
+      return new XMLSchema(schemas, startElement)
+    }
+
+    function _processChildren(el, grammar) {
+      if (!el) return new Sequence([])
+      let blocks = _processBlocks(el.children, grammar);
+      if (blocks.length === 1) {
+        return blocks[0]
+      } else {
+        return new Sequence(blocks)
+      }
+    }
+
+    function _processBlocks(children, grammar) {
+      const blocks = [];
+      for (var i = 0; i < children.length; i++) {
+        const child = children[i];
+        // const name = child.attr('name')
+        switch (child.tagName) {
+          // skip these
+          case 'attribute':
+          case 'empty':
+          case 'notAllowed': {
+            break
+          }
+          case 'element': {
+            const elName = child.attr('name');
+            blocks.push(new Token(elName));
+            break
+          }
+          case 'text': {
+            blocks.push(new Token(TEXT$3));
+            break
+          }
+          case 'ref': {
+            const block = _processReference(child, grammar);
+            blocks.push(block);
+            break
+          }
+          case 'group': {
+            blocks.push(_processSequence(child, grammar));
+            break
+          }
+          case 'choice': {
+            const block = _processChoice(child, grammar);
+            blocks.push(block);
+            break
+          }
+          case 'optional': {
+            const block = new Optional(_processChildren(child, grammar));
+            blocks.push(block);
+            break
+          }
+          case 'oneOrMore': {
+            const block = new Plus(_processChildren(child, grammar));
+            blocks.push(block);
+            break
+          }
+          case 'zeroOrMore': {
+            const block = new Kleene(_processChildren(child, grammar));
+            blocks.push(block);
+            break
+          }
+          case 'interleave': {
+            const block = new Interleave(_processBlocks(child.children, grammar));
+            blocks.push(block);
+            break
+          }
+          default:
+            throw new Error('Not supported yet: ' + child.tagName)
+        }
+      }
+      return blocks
+    }
+
+    function _processSequence(el, grammar) {
+      // TODO: seems that this optimization is not needed any more as references get inlined.
+      // looking at _expandRef() it looks as though the corresponding DOMElement gets cloned on recursion
+      // see above
+      // if (el.expr) return el.expr.copy()
+      const blocks = _processBlocks(el.children, grammar);
+      el.expr = new Sequence(blocks);
+      return el.expr
+    }
+
+    function _processChoice(el, grammar) {
+      // if (el.expr) return el.expr.copy()
+      let blocks = _processBlocks(el.children, grammar);
+      el.expr = new Choice(blocks);
+      return el.expr
+    }
+
+    function _processReference(ref, grammar) {
+      const name = ref.attr('name');
+      const def = grammar.defs[name];
+      if (!def) throw new Error(`Illegal ref: ${name} is not defined.`)
+      // if (def.expr) return def.expr.copy()
+      // Guard for cyclic references
+      // TODO: what to do with cyclic refs?
+      if (grammar._visiting[name]) {
+        throw new Error('Cyclic references are not supported yet')
+      }
+      grammar._visiting[name] = true;
+      const block = _processChildren(def, grammar);
+      def.expr = block;
+      delete grammar._visiting[name];
+      return def.expr
+    }
+
+    function _collectAttributes(el, grammar, attributes = {}) {
+      if (!el) return {}
+      // ATTENTION: RNG supports more than we do here
+      // We just collect all attributes, infering no rules
+      let children = el.children;
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        switch (child.tagName) {
+          case 'attribute': {
+            const attr = _transformAttribute(child);
+            attributes[attr.name] = attr;
+            break
+          }
+          case 'group':
+          case 'choice':
+          case 'optional':
+          case 'oneOrMore':
+          case 'zeroOrMore': {
+            _collectAttributes(child, grammar, attributes);
+            break
+          }
+          default:
+          //
+        }
+      }
+      return attributes
+    }
+
+    function _transformAttribute(el) {
+      const name = el.attr('name');
+      // TODO: extract all the attribute specs
+      return {
+        name
+      }
+    }
+
+    function validateXML(xmlSchema, dom) {
+      let root = dom.find(xmlSchema.getStartElement());
+      if (!root) {
+        return {
+          errors: [{
+            msg: 'Start element is missing.',
+            el: dom
+          }]
+        }
+      } else {
+        return validateElement(xmlSchema, root)
+      }
+    }
+
+    function validateElement(xmlSchema, el) {
+      let errors = [];
+      let valid = true;
+      let q = [el];
+      while (q.length > 0) {
+        let next = q.shift();
+        let res = xmlSchema.validateElement(next);
+        if (!res.ok) {
+          errors = errors.concat(res.errors);
+          valid = false;
+        }
+        if (next.isElementNode()) {
+          q = q.concat(next.getChildren());
+        }
+      }
+      return {
+        errors: errors,
+        ok: valid
+      }
+    }
+
+    /**
+     * This implementation is creating a minified representation of a Schema.
+     *
+     * ```
+     * [ [<string-literals...>], <rootElId>, [<elements...>] ]
+     *
+     * element: [ <nameId>, [<attributes...>], <content> ]
+     * attribute: <nameId> (temporarily)
+     * content: [<type>:'*?+si', []|<nameId> ]
+     * ```
+     */
+
+    class LiteralRegistry {
+      constructor() {
+        this._map = new Map();
+      }
+
+      register(literal) {
+        if (!this._map.has(literal)) {
+          this._map.set(literal, { literal, count: 0 });
+        }
+        this._map.get(literal).count++;
+      }
+
+      computeRanks() {
+        let entries = Array.from(this._map.values());
+        entries.sort((a, b) => {
+          return b.count - a.count
+        });
+        let L = entries.length;
+        for (let idx = 0; idx < L; idx++) {
+          entries[idx].rank = idx;
+        }
+        this._sortedLiterals = entries.map(e => e.literal);
+      }
+
+      getRank(literal) {
+        return this._map.get(literal).rank
+      }
+
+      getSortedLiterals() {
+        return this._sortedLiterals
+      }
+    }
+
+    function serializeXMLSchema(xmlSchema) {
+      let literalRegistry = new LiteralRegistry();
+
+      function _registerLiterals(o) {
+        switch (o.constructor) {
+          case XMLSchema: {
+            literalRegistry.register(o.startElement);
+            o.getTagNames().forEach(name => {
+              _registerLiterals(o.getElementSchema(name));
+            });
+            break
+          }
+          case ElementSchema: {
+            literalRegistry.register(o.name);
+            Object.keys(o.attributes).forEach(attrName => {
+              // TODO: later we should also register attribute values
+              literalRegistry.register(attrName);
+            });
+            _registerLiterals(o.expr);
+            break
+          }
+          case DFAExpr:
+          case InterleaveExpr: {
+            _registerLiterals(o.root);
+            break
+          }
+          case Token: {
+            literalRegistry.register(o.name);
+            break
+          }
+          case Choice:
+          case Sequence:
+          case Interleave: {
+            o.blocks.forEach(_registerLiterals);
+            break
+          }
+          case Optional:
+          case Kleene:
+          case Plus: {
+            _registerLiterals(o.block);
+            break
+          }
+          default:
+            throw new Error('FIXME')
+        }
+      }
+      _registerLiterals(xmlSchema);
+
+      literalRegistry.computeRanks();
+
+      function _encode(o) {
+        switch (o.constructor) {
+          case XMLSchema: {
+            return [
+              literalRegistry.getRank(o.startElement),
+              o.getTagNames().map(name => {
+                return _encode(o.getElementSchema(name))
+              })
+            ]
+          }
+          case ElementSchema: {
+            return [
+              literalRegistry.getRank(o.name),
+              o.type === 'text' ? 't' : 'e',
+              Object.keys(o.attributes).map(attrName => {
+                // TODO: later we should also register attribute values
+                return literalRegistry.getRank(attrName)
+              }),
+              _encode(o.expr)
+            ]
+          }
+          case DFAExpr:
+          case InterleaveExpr: {
+            return _encode(o.root)
+          }
+          case Token: {
+            return literalRegistry.getRank(o.name)
+          }
+          case Choice:
+          case Sequence:
+          case Interleave: {
+            return [
+              o.token,
+              o.blocks.map(_encode)
+            ]
+          }
+          case Optional:
+          case Kleene:
+          case Plus: {
+            return [
+              o.token,
+              _encode(o.block)
+            ]
+          }
+        }
+      }
+      let data = { literals: literalRegistry.getSortedLiterals(), schema: _encode(xmlSchema) };
+
+      return JSON.stringify(data)
+    }
+
+    function deserializeXMLSchema(xmlSchemaInput, publicId = '', dtd = '') {
+      let data;
+      if (substance__default.isString(xmlSchemaInput)) {
+        data = JSON.parse(xmlSchemaInput);
+      } else {
+        data = xmlSchemaInput;
+      }
+      let literals = data.literals;
+      let schemaData = data.schema;
+
+      function _decodeLiteral(d) {
+        return literals[d]
+      }
+
+      let startElement = _decodeLiteral(schemaData[0]);
+      let elementSchemas = {};
+
+      function _decodeExpression(d) {
+        if (substance__default.isNumber(d)) {
+          return new Token(_decodeLiteral(d))
+        } else if (substance__default.isArray(d)) {
+          let type = d[0];
+          let content = d[1];
+          switch (type) {
+            case Sequence.token:
+              return new Sequence(content.map(_decodeExpression))
+            case Interleave.token:
+              return new Interleave(content.map(_decodeExpression))
+            case Choice.token:
+              return new Choice(content.map(_decodeExpression))
+            case Optional.token:
+              return new Optional(_decodeExpression(content))
+            case Plus.token:
+              return new Plus(_decodeExpression(content))
+            case Kleene.token:
+              return new Kleene(_decodeExpression(content))
+          }
+        } else {
+          throw new Error('invalid data')
+        }
+      }
+
+      function _decodeElementSchemaData(d) {
+        let name = _decodeLiteral(d[0]);
+        let type = d[1] === 't' ? 'text' : 'element';
+        // TODO: at some point we gonna have more complex attribute specs
+        let attributes = {};
+        d[2].forEach(rank => {
+          let literal = _decodeLiteral(rank);
+          attributes[literal] = literal;
+        });
+        let expr = createExpression(name, _decodeExpression(d[3]));
+        return new ElementSchema(name, type, attributes, expr)
+      }
+
+      schemaData[1].forEach(elementSchemaData => {
+        let elementSchema = _decodeElementSchemaData(elementSchemaData);
+        elementSchemas[elementSchema.name] = elementSchema;
+      });
+
+      let schema = new XMLSchema(elementSchemas, startElement, publicId, dtd);
+      return schema
+    }
+
+    exports._analyzeSchema = analyze;
+    exports._compileRNG = _compileRNG;
+    exports._expandIncludes = _expandIncludes;
+    exports._isTextNodeEmpty = _isTextNodeEmpty;
+    exports._loadRNG = _loadRNG;
+    exports._lookupRNG = _lookupRNG;
+    exports.DFA = DFA;
+    exports.DFABuilder = DFABuilder;
+    exports.validateXML = validateXML;
+    exports.XMLSchema = XMLSchema;
+    exports.serializeXMLSchema = serializeXMLSchema;
+    exports.deserializeXMLSchema = deserializeXMLSchema;
 
 
   });
@@ -15723,7 +15758,7 @@
   var textureXmlUtils_cjs_12 = textureXmlUtils_cjs.deserializeXMLSchema;
 
   class ArticleConfigurator extends TextureConfigurator {
-    constructor (parent, name) {
+    constructor(parent, name) {
       super(parent, name);
 
       this._xmlSchemaIds = new Set();
@@ -15731,27 +15766,27 @@
       this._xmlTransformations = new Map();
     }
 
-    registerSchemaId (xmlSchemaId) {
+    registerSchemaId(xmlSchemaId) {
       this._xmlSchemaIds.add(xmlSchemaId);
     }
 
-    isSchemaKnown (xmlSchemaId) {
+    isSchemaKnown(xmlSchemaId) {
       return this._xmlSchemaIds.has(xmlSchemaId)
     }
 
-    addValidator (xmlSchemaId, validator) {
+    addValidator(xmlSchemaId, validator) {
       this._xmlValidators.set(xmlSchemaId, validator);
     }
 
-    getValidator (xmlSchemaId) {
+    getValidator(xmlSchemaId) {
       return this._xmlValidators.get(xmlSchemaId)
     }
 
-    addTransformation (xmlSchemaId, transformation) {
+    addTransformation(xmlSchemaId, transformation) {
       this._xmlTransformations.set(xmlSchemaId, transformation);
     }
 
-    getTransformation (xmlSchemaId) {
+    getTransformation(xmlSchemaId) {
       return this._xmlTransformations.get(xmlSchemaId)
     }
   }
@@ -15766,7 +15801,7 @@
      * article model, the content is validated against the TextureJATS schema,
      * being a subset of JATS, as an indicator for problems such as loss of information.
      */
-    load (xml, config) {
+    load(xml, config) {
       let articleConfig = config.getConfiguration('article');
 
       let xmlDom = substance.DefaultDOMElement.parseXML(xml);
@@ -15863,8 +15898,8 @@
 
   var ArticleModelPackage = {
     name: 'article.model',
-    configure (config) {
-  [
+    configure(config) {
+      [
         Abstract, Article, ArticleRef,
         BlockFormula, BlockQuote, Body, Bold, BookRef, Break, ChapterRef, ConferencePaperRef,
         CustomAbstract, MetadataField, DataPublicationRef, ExternalLink, Figure, FigurePanel,
@@ -15935,7 +15970,7 @@
 
   // ATTENTION: this is a prototype implementation and will be redesigned when the requirements clear.
   class ExperimentalEditorSettings {
-    constructor () {
+    constructor() {
       this._settings = new substance.TreeIndex();
     }
 
@@ -15954,23 +15989,23 @@
     //   return result
     // }
 
-    getSettingsForValue (path) {
+    getSettingsForValue(path) {
       return this._settings.get(path) || EMPTY
     }
 
-    load (settings) {
+    load(settings) {
       this._settings.clear();
       this.extend(settings);
     }
 
-    extend (settings) {
+    extend(settings) {
       let selectors = Object.keys(settings);
       for (let selector of selectors) {
         this._extendValueSettings(selector, settings[selector]);
       }
     }
 
-    _extendValueSettings (selector, spec) {
+    _extendValueSettings(selector, spec) {
       if (selector.indexOf('<') !== -1) throw new Error('hierarchical selectors not supported yet')
       let path = selector.trim().split('.');
       let valueSettings = this._settings.get(path);
@@ -15985,14 +16020,14 @@
   var FigurePackageSettings = {};
 
   class ArticlePanel extends substance.Component {
-    constructor (...args) {
+    constructor(...args) {
       super(...args);
 
       // TODO: should we really (ab-)use the regular Component state as AppState?
       this._initialize(this.props, this.state);
     }
 
-    getActionHandlers () {
+    getActionHandlers() {
       return {
         executeCommand: this._executeCommand,
         toggleOverlay: this._toggleOverlay,
@@ -16004,7 +16039,7 @@
       }
     }
 
-    _initialize (props) {
+    _initialize(props) {
       // TODO: I want to move to a single-layer setup for all views in this panel,
       // i.e. no extra configurations and if possible no extra editor session
       // and instead contextualize commands tools etc.
@@ -16055,25 +16090,25 @@
       appState._reset();
     }
 
-    willReceiveProps (props) {
+    willReceiveProps(props) {
       if (props.document !== this.props.document) {
         this._initialize(props);
         this.empty();
       }
     }
 
-    getContext () {
+    getContext() {
       return this.context
     }
 
-    getContentPanel () {
+    getContentPanel() {
       // This is part of the Editor interface
       // ATTENTION: being a legacy of the multi-view implementation
       // this has to provide the content panel of the content panel
       return this.refs.content.getContentPanel()
     }
 
-    didMount () {
+    didMount() {
       let router = this.context.router;
       if (router) {
         this._onRouteChange(router.readRoute());
@@ -16081,14 +16116,14 @@
       }
     }
 
-    dispose () {
+    dispose() {
       let router = this.context.router;
       if (router) {
         router.off(this);
       }
     }
 
-    shouldRerender (newProps, newState) {
+    shouldRerender(newProps, newState) {
       return (
         newProps.document !== this.props.document ||
         newProps.config !== this.props.config ||
@@ -16096,7 +16131,7 @@
       )
     }
 
-    render ($$) {
+    render($$) {
       let el = $$('div').addClass('sc-article-panel');
       el.append(
         this._renderContent($$)
@@ -16104,7 +16139,7 @@
       return el
     }
 
-    _renderContent ($$) {
+    _renderContent($$) {
       const props = this.props;
       const api = this.api;
       const archive = props.archive;
@@ -16121,7 +16156,7 @@
       }).ref('content')
     }
 
-    _closeModal () {
+    _closeModal() {
       const appState = this._getAppState();
       let workflowId = appState.workflowId;
       if (workflowId) {
@@ -16132,14 +16167,14 @@
       appState.propagateUpdates();
     }
 
-    _createAppState (config) { // eslint-disable-line no-unused-vars
+    _createAppState(config) { // eslint-disable-line no-unused-vars
       return new substance.AppState()
     }
 
     // EXPERIMENTAL:
     // this is a first prototype for settings used to control editability and required fields
     // On the long run we need to understand better what different means of configuration we want to offer
-    _createSettings (doc) {
+    _createSettings(doc) {
       let settings = new ExperimentalEditorSettings();
       let metadata = doc.get('metadata');
       // Default settings
@@ -16151,19 +16186,19 @@
       return settings
     }
 
-    _executeCommand (name, params) {
+    _executeCommand(name, params) {
       this._getEditorSession().executeCommand(name, params);
     }
 
-    _getAppState () {
+    _getAppState() {
       return this.appState
     }
 
-    _getEditorSession () {
+    _getEditorSession() {
       return this.editorSession
     }
 
-    _handleKeydown (e) {
+    _handleKeydown(e) {
       // console.log('ArticlePanel._handleKeydown', e)
       // ATTENTION: asking the currently active content to handle the keydown event first
       let handled = this.refs.content._onKeydown(e);
@@ -16178,15 +16213,15 @@
       return handled
     }
 
-    _scrollElementIntoView (el, force) {
+    _scrollElementIntoView(el, force) {
       return this.refs.content._scrollElementIntoView(el, force)
     }
 
-    _scrollTo (params) {
+    _scrollTo(params) {
       return this.refs.content._scrollTo(params)
     }
 
-    _startWorkflow (workflowId, workflowProps) {
+    _startWorkflow(workflowId, workflowProps) {
       const appState = this._getAppState();
       if (appState.workflowId) throw new Error('Another workflow has been started already.')
       appState.workflowId = workflowId;
@@ -16196,7 +16231,7 @@
       this._updateRoute({ workflow: workflowId });
     }
 
-    _toggleOverlay (overlayId) {
+    _toggleOverlay(overlayId) {
       const appState = this._getAppState();
       if (appState.overlayId === overlayId) {
         appState.overlayId = null;
@@ -16205,7 +16240,7 @@
       }
       appState.propagateUpdates();
     }
-    _onSettingsUpdate () {
+    _onSettingsUpdate() {
       // FIXME: there is a BUG in Component.js leading to undisposed surfaces
       // HACK: instead of doing an incremental DOM update force disposal by wiping the content
       // ATTENTION: removing the following line leads to the BUG
@@ -16220,7 +16255,7 @@
     // and instead do this just in the demo setup.
     // ATM, this is only activated when Texture is mounted with `enableRouting:true`
 
-    _clearRoute () {
+    _clearRoute() {
       let router = this.context.router;
       // Note: we do not change the route while running tests, otherwise the test url get's lost
       // TODO: why is the TestSuite using a router? sounds like this could be achieved with URL params at least
@@ -16229,7 +16264,7 @@
       }
     }
 
-    _updateRoute (params) {
+    _updateRoute(params) {
       let router = this.context.router;
       // Note: we do not change the route while running tests, otherwise the test url get's lost
       // TODO: why is the TestSuite using a router? sounds like this could be achieved with URL params at least
@@ -16238,7 +16273,7 @@
       }
     }
 
-    _onRouteChange (data) {
+    _onRouteChange(data) {
       // EXPERIMENTAL: taking an object from the router
       // and interpreting it to navigate to the right location in the app
       let { workflow, section, nodeId } = data;
@@ -16266,7 +16301,7 @@
   }
 
   class ArticleSerializer {
-    export (doc, config) {
+    export(doc, config) {
       let articleConfig = config.getConfiguration('article');
 
       // EXPERIMENTAL: I am not sure yet, if this is the right way to use
@@ -16291,12 +16326,12 @@
 
       let xmlStr = substance.prettyPrintXML(jats);
       xmlStr = String(xmlStr)
-           .replace(/&lt;mixed-citation/g, '<mixed-citation')
-           .replace(/&lt;\/mixed-citation&gt;/g, '<\/mixed-citation>')
-           .replace(/publication-type="journal"&gt;/g, 'publication-type="journal">')
-          .replace(/<element-citation(\s)publication-type="(.)*">(\s)*<(.)*>(\s)*<mixed-citation\s/g, '<mixed-citation ')
-          .replace(/<element-citation>(\s)*<(.)*>(\s)*<mixed-citation/g, '<mixed-citation')
-          .replace(/<\/mixed-citation><\/(.)*>(\s)+<\/element-citation>/g, '<\/mixed-citation>');
+        .replace(/&lt;mixed-citation/g, '<mixed-citation')
+        .replace(/&lt;\/mixed-citation&gt;/g, '<\/mixed-citation>')
+        .replace(/publication-type="journal"&gt;/g, 'publication-type="journal">')
+        .replace(/<element-citation(\s)publication-type="(.)*">(\s)*<(.)*>(\s)*<mixed-citation\s/g, '<mixed-citation ')
+        .replace(/<element-citation>(\s)*<(.)*>(\s)*<mixed-citation/g, '<mixed-citation')
+        .replace(/<\/mixed-citation><\/(.)*>(\s)+<\/element-citation>/g, '<\/mixed-citation>');
 
       // for the purpose of debugging
       if (substance.platform.inBrowser) {
@@ -16309,7 +16344,7 @@
     }
   }
 
-  var TextureJATSData = {"literals":["id","xml:base","specific-use","xml:lang","content-type","TEXT","bold","fixed-case","italic","monospace","overline","overline-start","overline-end","roman","sans-serif","sc","strike","underline","underline-start","underline-end","ruby","sub","sup","named-content","xref","ext-link","styled-content","abbrev","milestone-end","milestone-start","inline-supplementary-material","chem-struct","inline-formula","inline-graphic","private-char","target","alternatives","break","xlink:type","xlink:href","xlink:role","xlink:title","xlink:show","xlink:actuate","p","label","style","rid","align","char","charoff","valign","toggle","list","supplementary-material","title","position","orientation","def-list","disp-formula","disp-formula-group","disp-quote","email","country","sec","fig","tr","name","string-name","collab","permissions","uri","publication-format","seq","year","month","day","iso-8601-date","calendar","ack","boxed-text","chem-struct-wrap","fig-group","caption","preformat","table-wrap","speech","statement","verse-group","contrib-group","role","article-title","aff","institution","institution-wrap","object-id","pub-id-type","issue","volume","fpage","lpage","page-range","elocation-id","version","season","era","string-date","given-names","alt","kwd-group","subj-group","fn-group","graphic","mime-subtype","mimetype","tex-math","width","col","article","ali:free_to_read","start_date","ali:license_ref","contrib","corresp","contrib-id","bio","copyright-holder","copyright-statement","copyright-year","license","license-p","price","addr-line","city","fax","phone","postal-code","state","aff-alternatives","conf-loc","conf-name","isbn","issue-title","trans-title-group","trans-title","trans-subtitle","anonymous","etal","publisher-name","publisher-loc","element-citation","chapter-title","comment","edition","person-group","pub-id","source","data-title","part-title","patent","series","date-in-citation","address","institution-id","date","date-type","collab-alternatives","symbol","name-alternatives","name-style","surname","prefix","suffix","initials","assigning-authority","attrib","alt-text","article-meta","article-id","article-categories","title-group","pub-date","history","abstract","trans-abstract","funding-group","subject","compound-subject","abstract-type","kwd","subtitle","fn","array","media","table-wrap-group","table","table-wrap-foot","arrange","award-group","award-type","funding-source","award-id","principal-award-recipient","principal-investigator","journal-meta","list-item","ref-list","ref","designator","colgroup","thead","tfoot","tbody","span","th","td","abbr","axis","headers","scope","rowspan","colspan","front","body","back","end_date","contrib-type","equal-contrib","deceased","license-type","conf-date","conf-sponsor","issn","issn-l","issue-id","issue-part","issue-sponsor","journal-id","volume-id","volume-series","volume-issue-group","on-behalf-of","publisher","size","citation-alternatives","mixed-citation","publication-type","publisher-type","institution-id-type","supplement","collab-type","contrib-id-type","authenticated","degrees","ext-link-type","def","currency","related-article","sig-block","sig","notes","long-desc","custom-meta-group","custom-meta","meta-name","meta-value","textual-form","subj-group-type","compound-subject-part","series-title","series-text","author-notes","product","self-uri","kwd-group-type","compound-kwd","compound-kwd-part","nested-kwd","unstructured-kwd-group","pub-type","conference","conf-acronym","conf-num","conf-theme","string-conf","counts","count","equation-count","fig-count","table-count","ref-count","page-count","word-count","alt-title","author-comment","app-group","app","glossary","fig-type","baseline-shift","preformat-type","xml:space","hr","underline-style","rb","rt","rp","funding-statement","open-access","source-type","journal-title-group","journal-title","journal-subtitle","abbrev-journal-title","fn-type","ref-type","term-head","def-head","def-item","term","list-type","prefix-word","list-content","continued-from","notation","speaker","verse-line","note","annotation","gov","person-group-type","std","std-organization","trans-source","related-object","floats-group","sec-type","disp-level","sec-meta","summary","border","frame","rules","cellspacing","cellpadding","glyph-data","glyph-ref","article-type","dtd-version","sub-article","front-stub","response"],"schema":[118,[[119,"e",[0,1,4,2,225,120],[",",[]]],[121,"t",[0,1,4,2,120],5],[89,"e",[0,1,4,2],["*",122]],[122,"e",[0,1,226,123,227,228,47,2,38,39,40,41,42,43],["~",[["*",124],["?",67],["?",62],["?",68],["?",125],["?",69],["?",90],["*",24]]]],[126,"t",[0,1,4,2,3],5],[127,"t",[0,1,4,2,3],5],[128,"t",[0,1,4,2],5],[129,"e",[0,1,229,2,3,38,39,40,41,42,43],["~",[["?",121],["?",130]]]],[130,"t",[0,1,4,2],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,31,32,33,34,27,28,29,23,26,35,24,21,22,54,131]]]],[70,"e",[0,1],[",",[["*",127],["*",128],["*",126],["*",["|",[119,129]]]]]],[91,"t",[0,1,3],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[92,"e",[0,1,4,47,2,3],["~",[["*",132],["?",45],["?",133],["?",63],["?",134],["*",93],["*",94],["?",135],["?",136],["?",137],["?",62],["*",25],["?",71]]]],[138,"e",[],[",",[]]],[230,"e",[],[",",[]]],[139,"t",[0,1,4,2,3],5],[140,"t",[0,1,4,2,3],5],[231,"e",[],[",",[]]],[95,"t",[0,1,96,4,2],5],[141,"t",[0,1,72,4,2],5],[232,"e",[],[",",[]]],[233,"e",[],[",",[]]],[97,"t",[0,1,4,73,2,3],5],[234,"e",[],[",",[]]],[235,"e",[],[",",[]]],[236,"e",[],[",",[]]],[142,"t",[0,1,4,2,3],["*",["|",[5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22]]]],[237,"e",[],[",",[]]],[90,"t",[0,1,4,2,3],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22]]]],[143,"e",[0,1,4,2,3],[",",[144,["*",145]]]],[145,"e",[],[",",[]]],[144,"t",[0,1,4,2,3],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[98,"t",[0,1,73,4,2,3],5],[238,"e",[],[",",[]]],[239,"e",[],[",",[]]],[240,"e",[],[",",[]]],[146,"e",[],[",",[]]],[147,"e",[],[",",[]]],[241,"e",[],[",",[]]],[242,"e",[],[",",[]]],[148,"t",[0,1,2,3],5],[149,"t",[0,1,2,3],5],[99,"t",[0,1,4,73,2,3],5],[100,"t",[0,1,4,2,3],5],[101,"t",[0,1,4,2,3],5],[243,"e",[],[",",[]]],[102,"t",[0,1,4,73,2],5],[244,"e",[],[",",[]]],[245,"e",[],[",",[]]],[150,"e",[0,1,246,247,72,2,3,38,39,40,41,42,43],["~",[["?",91],["?",151],["?",152],["?",69],["?",153],["?",102],["?",99],["?",97],["?",100],["?",101],["*",154],["*",155],["*",149],["*",148],["?",156],["?",98],["?",74],["?",75],["?",76],["?",140],["?",139],["?",157],["?",158],["?",159],["?",160],["?",103],["?",71],["?",161]]]],[162,"e",[],[",",[]]],[132,"t",[0,1,4,2,3],5],[133,"t",[0,1,4,2,3],5],[63,"t",[0,1,4,63,2,3],5],[62,"t",[0,1,4,2,3,38,39,40,41,42,43],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22]]]],[134,"t",[0,1,4,2],5],[93,"t",[0,1,4,2,3,38,39,40,41,42,43],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[163,"t",[0,1,248,4,2,3],5],[94,"e",[0,1],["*",["|",[93,163]]]],[135,"t",[0,1,4,2],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22]]]],[136,"t",[0,1,4,2,3],5],[137,"t",[0,1,4,2,3],5],[71,"t",[0,1,4,2,3,38,39,40,41,42,43],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22]]]],[249,"e",[],[",",[]]],[164,"e",[0,1,165,72,77,78,2],[",",[["?",["|",[[",",[["?",76],["?",75]]],104]]],["?",74],["?",105],["?",106]]]],[76,"t",[0,1,4,2,3],5],[75,"t",[0,1,4,2,3],5],[104,"t",[0,1,4,2,3],5],[105,"t",[0,1,4,2,3],5],[74,"t",[],5],[106,"t",[0,1,77,78,4,2,3],5],[166,"e",[],[",",[]]],[69,"e",[0,1,250,167,2,3,38,39,40,41,42,43],["~",[["?",62],23,["?",89],["*",24]]]],[124,"t",[0,1,251,252,4,2,3],5],[168,"e",[0,1],["+",["|",[67,68]]]],[67,"e",[0,1,4,169,2,3],[",",[["|",[[",",[170,["?",107]]],107]],["?",171],["?",172]]]],[68,"t",[0,1,4,169,2,3],["*",["|",[5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22]]]],[253,"e",[],[",",[]]],[107,"t",[0,1,173],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22]]]],[170,"t",[0,1,173],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22]]]],[171,"t",[0,1,4,2,3],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22]]]],[172,"t",[0,1,4,2,3],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22]]]],[25,"t",[0,1,254,174,2,3,38,39,40,41,42,43],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22]]]],[175,"t",[0,1,2,3],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[255,"e",[],[",",[]]],[45,"t",[0,1,108,3],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[131,"t",[0,1,256,4,2,3],["*",["|",[5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]]]],[55,"t",[0,1,4,2],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[257,"e",[],[",",[]]],[258,"e",[],[",",[]]],[259,"e",[],[",",[]]],[79,"e",[],[",",[]]],[125,"e",[0,1,47,4,2,3,38,39,40,41,42,43],["*",44]],[260,"e",[],[",",[]]],[176,"e",[],[",",[]]],[261,"e",[],[",",[]]],[262,"e",[],[",",[]]],[263,"e",[],[",",[]]],[264,"e",[],[",",[]]],[265,"e",[],[",",[]]],[36,"e",[],[",",[]]],[266,"e",[],[",",[]]],[177,"e",[0,1],[",",[["*",178],["?",179],["?",180],["*",89],["*",92],["*",181],["?",98],["?",97],["?",142],["?",141],["?",["|",[[",",[["?",[",",[99,["?",100]]]],["?",101]]],102]]],["?",182],["?",70],["*",183],["*",184],["*",109],["*",185]]]],[178,"t",[0,1,96,2],5],[179,"e",[0,1],["*",110]],[110,"e",[0,1,267,2,3],[",",[["+",["|",[186,187]]],["*",110]]]],[186,"t",[0,1,4],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[187,"e",[],[",",[]]],[268,"e",[],[",",[]]],[269,"e",[],[",",[]]],[270,"e",[],[",",[]]],[271,"e",[],[",",[]]],[272,"e",[],[",",[]]],[182,"e",[0,1],["*",164]],[273,"e",[],[",",[]]],[183,"e",[0,1,188,2,3],[",",[["?",55],["*",["|",[64,44]]]]]],[184,"e",[0,1,188,2,3],[",",[["?",55],["*",["|",[64,44]]]]]],[109,"e",[0,1,274,2,3],[",",[["?",45],["*",189]]]],[189,"t",[0,1,4],["*",["|",[5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22]]]],[275,"e",[],[",",[]]],[276,"e",[],[",",[]]],[277,"e",[],[",",[]]],[278,"e",[],[",",[]]],[123,"e",[],[",",[]]],[181,"e",[0,1,279,72,165,77,78,3],["*",["|",[76,105,75,104,74,106]]]],[280,"e",[],[",",[]]],[281,"e",[],[",",[]]],[282,"e",[],[",",[]]],[283,"e",[],[",",[]]],[284,"e",[],[",",[]]],[285,"e",[],[",",[]]],[286,"e",[],[",",[]]],[287,"e",[],[",",[]]],[288,"e",[],[",",[]]],[289,"e",[],[",",[]]],[290,"e",[],[",",[]]],[291,"e",[],[",",[]]],[292,"e",[],[",",[]]],[180,"e",[0,1],[",",[91,["?",190],["*",143]]]],[190,"t",[0,1,4,2,3],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[293,"e",[],[",",[]]],[294,"e",[],[",",[]]],[295,"e",[],[",",[]]],[296,"e",[],[",",[]]],[111,"e",[0,1,4,2,3],[",",[["?",45],["?",55],["+",191]]]],[297,"e",[],[",",[]]],[192,"e",[],[",",[]]],[80,"e",[],[",",[]]],[81,"e",[],[",",[]]],[31,"e",[],[",",[]]],[82,"e",[0,1,56,57,2,3,4],[",",[["?",45],["+",65]]]],[65,"e",[0,1,56,57,2,3,298],[",",[["?",95],["?",45],["?",83],["*",109],112,["?",70]]]],[83,"e",[0,1,4,2,3,46],[",",[["?",55],["*",44]]]],[112,"e",[0,1,56,57,2,3,4,113,114,38,39,40,41,42,43],[",",[]]],[193,"e",[],[",",[]]],[33,"e",[0,1,4,2,299,114,113,3,38,39,40,41,42,43],["?",176]],[84,"t",[0,1,56,57,2,3,300,301],["*",["|",[5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,27,28,29,23,26,21,22]]]],[54,"e",[0,1,56,57,2,3,4,114,113,38,39,40,41,42,43],[",",[["?",45],["?",83]]]],[194,"e",[],[",",[]]],[85,"e",[0,1,56,57,2,3,4],[",",[["?",95],["?",45],["?",83],195,["?",70],["?",196]]]],[196,"e",[0,1],["?",111]],[302,"e",[],[",",[]]],[37,"e",[0,1],[",",[]]],[6,"t",[0,1,52,2],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[7,"t",[0,1,4,2],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[8,"t",[0,1,52,2],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[9,"t",[0,1,52,2],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[13,"e",[],[",",[]]],[14,"e",[],[",",[]]],[15,"t",[0,1,52,2],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[10,"t",[0,1,52,2],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[16,"t",[0,1,52,2],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[21,"t",[0,1,197,2],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[22,"t",[0,1,197,2],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[17,"t",[0,1,52,303,2],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[11,"e",[],[",",[]]],[12,"e",[],[",",[]]],[18,"e",[],[",",[]]],[19,"e",[],[",",[]]],[20,"e",[],[",",[]]],[304,"e",[],[",",[]]],[305,"e",[],[",",[]]],[306,"e",[],[",",[]]],[185,"e",[0,1,2,3],["*",198]],[307,"e",[],[",",[]]],[308,"e",[],[",",[]]],[198,"e",[0,1,47,199,2,3,38,39,40,41,42,43],[",",[["*",200],["*",201],["*",202],["*",203]]]],[200,"e",[0,1,47,309,63,2,3,38,39,40,41,42,43],94],[201,"t",[0,1,47,199,2,3,38,39,40,41,42,43],5],[202,"e",[],[",",[]]],[203,"e",[],[",",[]]],[204,"e",[],[",",[]]],[310,"e",[],[",",[]]],[311,"e",[],[",",[]]],[312,"e",[],[",",[]]],[313,"e",[],[",",[]]],[191,"e",[0,1,167,314,2,3],[",",[["?",45],["+",44]]]],[35,"e",[],[",",[]]],[24,"t",[0,1,315,108,47,2,3],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[30,"e",[],[",",[]]],[58,"e",[],[",",[]]],[316,"e",[],[",",[]]],[317,"e",[],[",",[]]],[318,"e",[],[",",[]]],[319,"e",[],[",",[]]],[53,"e",[0,1,320,321,322,323,2,3],["+",205]],[205,"e",[0,1,2,3],["+",["|",[44,53]]]],[32,"e",[0,1,4,2,3],115],[59,"e",[0,1,4,2,3],[",",[["?",45],115]]],[60,"e",[],[",",[]]],[115,"t",[0,1,4,2,324,103],5],[44,"t",[0,1,4,2,3],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,31,32,33,34,27,28,29,23,26,35,24,21,22,54]]]],[61,"e",[0,1,4,2,3],[",",[["+",44],["?",175]]]],[86,"e",[],[",",[]]],[325,"e",[],[",",[]]],[87,"e",[],[",",[]]],[88,"e",[],[",",[]]],[326,"e",[],[",",[]]],[27,"e",[],[",",[]]],[29,"e",[],[",",[]]],[28,"e",[],[",",[]]],[23,"t",[0,1,47,108,4,2,3,38,39,40,41,42,43],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,162,192,80,81,65,82,112,193,84,54,85,194,59,60,58,53,79,61,86,87,88]]]],[26,"e",[],[",",[]]],[206,"e",[0,1,4,2,3],["*",207]],[207,"e",[0,1,4,2,3],150],[327,"e",[],[",",[]]],[328,"e",[],[",",[]]],[151,"t",[0,1,2,3],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[152,"e",[],[",",[]]],[157,"t",[0,1,4,2,3],["*",["|",[5,62,25,71,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,23,26,21,22]]]],[161,"t",[0,1,77,78,4,2,3],5],[153,"t",[0,1,208,4,2,3],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22]]]],[329,"e",[],[",",[]]],[158,"t",[0,1,2,3],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22,37]]]],[159,"t",[0,1,4,63,2,3],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22]]]],[154,"e",[0,1,330,2,3],["*",["|",[146,69,166,67,168,68,92,138,147,90]]]],[155,"t",[0,1,96,174,2,38,39,40,41,42,43],5],[160,"t",[0,1,4,2,3],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22]]]],[331,"e",[],[",",[]]],[332,"e",[],[",",[]]],[156,"t",[0,1,4,2,3],["*",["|",[5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22]]]],[333,"e",[],[",",[]]],[103,"t",[0,1,208,4,2,3],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22]]]],[334,"e",[],[",",[]]],[335,"e",[],[",",[]]],[64,"e",[0,1,3,336,337,2],[",",[["?",55],["*",["|",[80,81,65,82,85,59,60,58,53,44,84,61,54,59,60,58,53,44,79,61,86,87,88]]],["*",64]]]],[338,"e",[],[",",[]]],[195,"e",[0,1,4,46,339,116,340,341,342,343,344,2],[",",[["|",[["*",117],["*",209]]],["|",[[",",[["?",210],["?",211],["+",212]]],["+",66]]]]]],[210,"e",[0,1,4,46,48,49,50,51],["+",66]],[211,"e",[0,1,4,46,48,49,50,51],["+",66]],[212,"e",[0,1,4,46,48,49,50,51],["+",66]],[209,"e",[0,1,4,46,213,116,48,49,50,51],["*",117]],[117,"e",[0,1,4,46,213,116,48,49,50,51],[",",[]]],[66,"e",[0,1,4,46,48,49,50,51],["+",["|",[214,215]]]],[214,"t",[0,1,4,46,216,217,218,219,220,221,48,49,50,51],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22]]]],[215,"t",[0,1,4,46,216,217,218,219,220,221,48,49,50,51],["*",["|",[5,25,30,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,36,33,34,31,32,27,28,29,23,26,35,24,21,22]]]],[34,"e",[],[",",[]]],[345,"e",[],[",",[]]],[346,"e",[],[",",[]]],[118,"e",[0,1,347,2,3,348],[",",[222,["?",223],["?",224]]]],[222,"e",[0,1],[",",[["?",204],177]]],[223,"e",[0,1,2],["*",["|",[64,80,81,65,82,85,59,60,58,53,44,84,61,54,59,60,58,53,44,79,61,86,87,88]]]],[224,"e",[0,1],["~",[["?",111],["?",206]]]],[349,"e",[],[",",[]]],[350,"e",[],[",",[]]],[351,"e",[],[",",[]]]]]};
+  var TextureJATSData = { "literals": ["id", "xml:base", "specific-use", "xml:lang", "content-type", "TEXT", "bold", "fixed-case", "italic", "monospace", "overline", "overline-start", "overline-end", "roman", "sans-serif", "sc", "strike", "underline", "underline-start", "underline-end", "ruby", "sub", "sup", "named-content", "xref", "ext-link", "styled-content", "abbrev", "milestone-end", "milestone-start", "inline-supplementary-material", "chem-struct", "inline-formula", "inline-graphic", "private-char", "target", "alternatives", "break", "xlink:type", "xlink:href", "xlink:role", "xlink:title", "xlink:show", "xlink:actuate", "p", "label", "style", "rid", "align", "char", "charoff", "valign", "toggle", "list", "supplementary-material", "title", "position", "orientation", "def-list", "disp-formula", "disp-formula-group", "disp-quote", "email", "country", "sec", "fig", "tr", "name", "string-name", "collab", "permissions", "uri", "publication-format", "seq", "year", "month", "day", "iso-8601-date", "calendar", "ack", "boxed-text", "chem-struct-wrap", "fig-group", "caption", "preformat", "table-wrap", "speech", "statement", "verse-group", "contrib-group", "role", "article-title", "aff", "institution", "institution-wrap", "object-id", "pub-id-type", "issue", "volume", "fpage", "lpage", "page-range", "elocation-id", "version", "season", "era", "string-date", "given-names", "alt", "kwd-group", "subj-group", "fn-group", "graphic", "mime-subtype", "mimetype", "tex-math", "width", "col", "article", "ali:free_to_read", "start_date", "ali:license_ref", "contrib", "corresp", "contrib-id", "bio", "copyright-holder", "copyright-statement", "copyright-year", "license", "license-p", "price", "addr-line", "city", "fax", "phone", "postal-code", "state", "aff-alternatives", "conf-loc", "conf-name", "isbn", "issue-title", "trans-title-group", "trans-title", "trans-subtitle", "anonymous", "etal", "publisher-name", "publisher-loc", "element-citation", "chapter-title", "comment", "edition", "person-group", "pub-id", "source", "data-title", "part-title", "patent", "series", "date-in-citation", "address", "institution-id", "date", "date-type", "collab-alternatives", "symbol", "name-alternatives", "name-style", "surname", "prefix", "suffix", "initials", "assigning-authority", "attrib", "alt-text", "article-meta", "article-id", "article-categories", "title-group", "pub-date", "history", "abstract", "trans-abstract", "funding-group", "subject", "compound-subject", "abstract-type", "kwd", "subtitle", "fn", "array", "media", "table-wrap-group", "table", "table-wrap-foot", "arrange", "award-group", "award-type", "funding-source", "award-id", "principal-award-recipient", "principal-investigator", "journal-meta", "list-item", "ref-list", "ref", "designator", "colgroup", "thead", "tfoot", "tbody", "span", "th", "td", "abbr", "axis", "headers", "scope", "rowspan", "colspan", "front", "body", "back", "end_date", "contrib-type", "equal-contrib", "deceased", "license-type", "conf-date", "conf-sponsor", "issn", "issn-l", "issue-id", "issue-part", "issue-sponsor", "journal-id", "volume-id", "volume-series", "volume-issue-group", "on-behalf-of", "publisher", "size", "citation-alternatives", "mixed-citation", "publication-type", "publisher-type", "institution-id-type", "supplement", "collab-type", "contrib-id-type", "authenticated", "degrees", "ext-link-type", "def", "currency", "related-article", "sig-block", "sig", "notes", "long-desc", "custom-meta-group", "custom-meta", "meta-name", "meta-value", "textual-form", "subj-group-type", "compound-subject-part", "series-title", "series-text", "author-notes", "product", "self-uri", "kwd-group-type", "compound-kwd", "compound-kwd-part", "nested-kwd", "unstructured-kwd-group", "pub-type", "conference", "conf-acronym", "conf-num", "conf-theme", "string-conf", "counts", "count", "equation-count", "fig-count", "table-count", "ref-count", "page-count", "word-count", "alt-title", "author-comment", "app-group", "app", "glossary", "fig-type", "baseline-shift", "preformat-type", "xml:space", "hr", "underline-style", "rb", "rt", "rp", "funding-statement", "open-access", "source-type", "journal-title-group", "journal-title", "journal-subtitle", "abbrev-journal-title", "fn-type", "ref-type", "term-head", "def-head", "def-item", "term", "list-type", "prefix-word", "list-content", "continued-from", "notation", "speaker", "verse-line", "note", "annotation", "gov", "person-group-type", "std", "std-organization", "trans-source", "related-object", "floats-group", "sec-type", "disp-level", "sec-meta", "summary", "border", "frame", "rules", "cellspacing", "cellpadding", "glyph-data", "glyph-ref", "article-type", "dtd-version", "sub-article", "front-stub", "response"], "schema": [118, [[119, "e", [0, 1, 4, 2, 225, 120], [",", []]], [121, "t", [0, 1, 4, 2, 120], 5], [89, "e", [0, 1, 4, 2], ["*", 122]], [122, "e", [0, 1, 226, 123, 227, 228, 47, 2, 38, 39, 40, 41, 42, 43], ["~", [["*", 124], ["?", 67], ["?", 62], ["?", 68], ["?", 125], ["?", 69], ["?", 90], ["*", 24]]]], [126, "t", [0, 1, 4, 2, 3], 5], [127, "t", [0, 1, 4, 2, 3], 5], [128, "t", [0, 1, 4, 2], 5], [129, "e", [0, 1, 229, 2, 3, 38, 39, 40, 41, 42, 43], ["~", [["?", 121], ["?", 130]]]], [130, "t", [0, 1, 4, 2], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 31, 32, 33, 34, 27, 28, 29, 23, 26, 35, 24, 21, 22, 54, 131]]]], [70, "e", [0, 1], [",", [["*", 127], ["*", 128], ["*", 126], ["*", ["|", [119, 129]]]]]], [91, "t", [0, 1, 3], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [92, "e", [0, 1, 4, 47, 2, 3], ["~", [["*", 132], ["?", 45], ["?", 133], ["?", 63], ["?", 134], ["*", 93], ["*", 94], ["?", 135], ["?", 136], ["?", 137], ["?", 62], ["*", 25], ["?", 71]]]], [138, "e", [], [",", []]], [230, "e", [], [",", []]], [139, "t", [0, 1, 4, 2, 3], 5], [140, "t", [0, 1, 4, 2, 3], 5], [231, "e", [], [",", []]], [95, "t", [0, 1, 96, 4, 2], 5], [141, "t", [0, 1, 72, 4, 2], 5], [232, "e", [], [",", []]], [233, "e", [], [",", []]], [97, "t", [0, 1, 4, 73, 2, 3], 5], [234, "e", [], [",", []]], [235, "e", [], [",", []]], [236, "e", [], [",", []]], [142, "t", [0, 1, 4, 2, 3], ["*", ["|", [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]]]], [237, "e", [], [",", []]], [90, "t", [0, 1, 4, 2, 3], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22]]]], [143, "e", [0, 1, 4, 2, 3], [",", [144, ["*", 145]]]], [145, "e", [], [",", []]], [144, "t", [0, 1, 4, 2, 3], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [98, "t", [0, 1, 73, 4, 2, 3], 5], [238, "e", [], [",", []]], [239, "e", [], [",", []]], [240, "e", [], [",", []]], [146, "e", [], [",", []]], [147, "e", [], [",", []]], [241, "e", [], [",", []]], [242, "e", [], [",", []]], [148, "t", [0, 1, 2, 3], 5], [149, "t", [0, 1, 2, 3], 5], [99, "t", [0, 1, 4, 73, 2, 3], 5], [100, "t", [0, 1, 4, 2, 3], 5], [101, "t", [0, 1, 4, 2, 3], 5], [243, "e", [], [",", []]], [102, "t", [0, 1, 4, 73, 2], 5], [244, "e", [], [",", []]], [245, "e", [], [",", []]], [150, "e", [0, 1, 246, 247, 72, 2, 3, 38, 39, 40, 41, 42, 43], ["~", [["?", 91], ["?", 151], ["?", 152], ["?", 69], ["?", 153], ["?", 102], ["?", 99], ["?", 97], ["?", 100], ["?", 101], ["*", 154], ["*", 155], ["*", 149], ["*", 148], ["?", 156], ["?", 98], ["?", 74], ["?", 75], ["?", 76], ["?", 140], ["?", 139], ["?", 157], ["?", 158], ["?", 159], ["?", 160], ["?", 103], ["?", 71], ["?", 161]]]], [162, "e", [], [",", []]], [132, "t", [0, 1, 4, 2, 3], 5], [133, "t", [0, 1, 4, 2, 3], 5], [63, "t", [0, 1, 4, 63, 2, 3], 5], [62, "t", [0, 1, 4, 2, 3, 38, 39, 40, 41, 42, 43], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22]]]], [134, "t", [0, 1, 4, 2], 5], [93, "t", [0, 1, 4, 2, 3, 38, 39, 40, 41, 42, 43], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [163, "t", [0, 1, 248, 4, 2, 3], 5], [94, "e", [0, 1], ["*", ["|", [93, 163]]]], [135, "t", [0, 1, 4, 2], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22]]]], [136, "t", [0, 1, 4, 2, 3], 5], [137, "t", [0, 1, 4, 2, 3], 5], [71, "t", [0, 1, 4, 2, 3, 38, 39, 40, 41, 42, 43], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22]]]], [249, "e", [], [",", []]], [164, "e", [0, 1, 165, 72, 77, 78, 2], [",", [["?", ["|", [[",", [["?", 76], ["?", 75]]], 104]]], ["?", 74], ["?", 105], ["?", 106]]]], [76, "t", [0, 1, 4, 2, 3], 5], [75, "t", [0, 1, 4, 2, 3], 5], [104, "t", [0, 1, 4, 2, 3], 5], [105, "t", [0, 1, 4, 2, 3], 5], [74, "t", [], 5], [106, "t", [0, 1, 77, 78, 4, 2, 3], 5], [166, "e", [], [",", []]], [69, "e", [0, 1, 250, 167, 2, 3, 38, 39, 40, 41, 42, 43], ["~", [["?", 62], 23, ["?", 89], ["*", 24]]]], [124, "t", [0, 1, 251, 252, 4, 2, 3], 5], [168, "e", [0, 1], ["+", ["|", [67, 68]]]], [67, "e", [0, 1, 4, 169, 2, 3], [",", [["|", [[",", [170, ["?", 107]]], 107]], ["?", 171], ["?", 172]]]], [68, "t", [0, 1, 4, 169, 2, 3], ["*", ["|", [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]]]], [253, "e", [], [",", []]], [107, "t", [0, 1, 173], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22]]]], [170, "t", [0, 1, 173], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22]]]], [171, "t", [0, 1, 4, 2, 3], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22]]]], [172, "t", [0, 1, 4, 2, 3], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22]]]], [25, "t", [0, 1, 254, 174, 2, 3, 38, 39, 40, 41, 42, 43], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22]]]], [175, "t", [0, 1, 2, 3], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [255, "e", [], [",", []]], [45, "t", [0, 1, 108, 3], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [131, "t", [0, 1, 256, 4, 2, 3], ["*", ["|", [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]]]], [55, "t", [0, 1, 4, 2], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [257, "e", [], [",", []]], [258, "e", [], [",", []]], [259, "e", [], [",", []]], [79, "e", [], [",", []]], [125, "e", [0, 1, 47, 4, 2, 3, 38, 39, 40, 41, 42, 43], ["*", 44]], [260, "e", [], [",", []]], [176, "e", [], [",", []]], [261, "e", [], [",", []]], [262, "e", [], [",", []]], [263, "e", [], [",", []]], [264, "e", [], [",", []]], [265, "e", [], [",", []]], [36, "e", [], [",", []]], [266, "e", [], [",", []]], [177, "e", [0, 1], [",", [["*", 178], ["?", 179], ["?", 180], ["*", 89], ["*", 92], ["*", 181], ["?", 98], ["?", 97], ["?", 142], ["?", 141], ["?", ["|", [[",", [["?", [",", [99, ["?", 100]]]], ["?", 101]]], 102]]], ["?", 182], ["?", 70], ["*", 183], ["*", 184], ["*", 109], ["*", 185]]]], [178, "t", [0, 1, 96, 2], 5], [179, "e", [0, 1], ["*", 110]], [110, "e", [0, 1, 267, 2, 3], [",", [["+", ["|", [186, 187]]], ["*", 110]]]], [186, "t", [0, 1, 4], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [187, "e", [], [",", []]], [268, "e", [], [",", []]], [269, "e", [], [",", []]], [270, "e", [], [",", []]], [271, "e", [], [",", []]], [272, "e", [], [",", []]], [182, "e", [0, 1], ["*", 164]], [273, "e", [], [",", []]], [183, "e", [0, 1, 188, 2, 3], [",", [["?", 55], ["*", ["|", [64, 44]]]]]], [184, "e", [0, 1, 188, 2, 3], [",", [["?", 55], ["*", ["|", [64, 44]]]]]], [109, "e", [0, 1, 274, 2, 3], [",", [["?", 45], ["*", 189]]]], [189, "t", [0, 1, 4], ["*", ["|", [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]]]], [275, "e", [], [",", []]], [276, "e", [], [",", []]], [277, "e", [], [",", []]], [278, "e", [], [",", []]], [123, "e", [], [",", []]], [181, "e", [0, 1, 279, 72, 165, 77, 78, 3], ["*", ["|", [76, 105, 75, 104, 74, 106]]]], [280, "e", [], [",", []]], [281, "e", [], [",", []]], [282, "e", [], [",", []]], [283, "e", [], [",", []]], [284, "e", [], [",", []]], [285, "e", [], [",", []]], [286, "e", [], [",", []]], [287, "e", [], [",", []]], [288, "e", [], [",", []]], [289, "e", [], [",", []]], [290, "e", [], [",", []]], [291, "e", [], [",", []]], [292, "e", [], [",", []]], [180, "e", [0, 1], [",", [91, ["?", 190], ["*", 143]]]], [190, "t", [0, 1, 4, 2, 3], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [293, "e", [], [",", []]], [294, "e", [], [",", []]], [295, "e", [], [",", []]], [296, "e", [], [",", []]], [111, "e", [0, 1, 4, 2, 3], [",", [["?", 45], ["?", 55], ["+", 191]]]], [297, "e", [], [",", []]], [192, "e", [], [",", []]], [80, "e", [], [",", []]], [81, "e", [], [",", []]], [31, "e", [], [",", []]], [82, "e", [0, 1, 56, 57, 2, 3, 4], [",", [["?", 45], ["+", 65]]]], [65, "e", [0, 1, 56, 57, 2, 3, 298], [",", [["?", 95], ["?", 45], ["?", 83], ["*", 109], 112, ["?", 70]]]], [83, "e", [0, 1, 4, 2, 3, 46], [",", [["?", 55], ["*", 44]]]], [112, "e", [0, 1, 56, 57, 2, 3, 4, 113, 114, 38, 39, 40, 41, 42, 43], [",", []]], [193, "e", [], [",", []]], [33, "e", [0, 1, 4, 2, 299, 114, 113, 3, 38, 39, 40, 41, 42, 43], ["?", 176]], [84, "t", [0, 1, 56, 57, 2, 3, 300, 301], ["*", ["|", [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 27, 28, 29, 23, 26, 21, 22]]]], [54, "e", [0, 1, 56, 57, 2, 3, 4, 114, 113, 38, 39, 40, 41, 42, 43], [",", [["?", 45], ["?", 83]]]], [194, "e", [], [",", []]], [85, "e", [0, 1, 56, 57, 2, 3, 4], [",", [["?", 95], ["?", 45], ["?", 83], 195, ["?", 70], ["?", 196]]]], [196, "e", [0, 1], ["?", 111]], [302, "e", [], [",", []]], [37, "e", [0, 1], [",", []]], [6, "t", [0, 1, 52, 2], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [7, "t", [0, 1, 4, 2], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [8, "t", [0, 1, 52, 2], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [9, "t", [0, 1, 52, 2], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [13, "e", [], [",", []]], [14, "e", [], [",", []]], [15, "t", [0, 1, 52, 2], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [10, "t", [0, 1, 52, 2], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [16, "t", [0, 1, 52, 2], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [21, "t", [0, 1, 197, 2], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [22, "t", [0, 1, 197, 2], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [17, "t", [0, 1, 52, 303, 2], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [11, "e", [], [",", []]], [12, "e", [], [",", []]], [18, "e", [], [",", []]], [19, "e", [], [",", []]], [20, "e", [], [",", []]], [304, "e", [], [",", []]], [305, "e", [], [",", []]], [306, "e", [], [",", []]], [185, "e", [0, 1, 2, 3], ["*", 198]], [307, "e", [], [",", []]], [308, "e", [], [",", []]], [198, "e", [0, 1, 47, 199, 2, 3, 38, 39, 40, 41, 42, 43], [",", [["*", 200], ["*", 201], ["*", 202], ["*", 203]]]], [200, "e", [0, 1, 47, 309, 63, 2, 3, 38, 39, 40, 41, 42, 43], 94], [201, "t", [0, 1, 47, 199, 2, 3, 38, 39, 40, 41, 42, 43], 5], [202, "e", [], [",", []]], [203, "e", [], [",", []]], [204, "e", [], [",", []]], [310, "e", [], [",", []]], [311, "e", [], [",", []]], [312, "e", [], [",", []]], [313, "e", [], [",", []]], [191, "e", [0, 1, 167, 314, 2, 3], [",", [["?", 45], ["+", 44]]]], [35, "e", [], [",", []]], [24, "t", [0, 1, 315, 108, 47, 2, 3], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [30, "e", [], [",", []]], [58, "e", [], [",", []]], [316, "e", [], [",", []]], [317, "e", [], [",", []]], [318, "e", [], [",", []]], [319, "e", [], [",", []]], [53, "e", [0, 1, 320, 321, 322, 323, 2, 3], ["+", 205]], [205, "e", [0, 1, 2, 3], ["+", ["|", [44, 53]]]], [32, "e", [0, 1, 4, 2, 3], 115], [59, "e", [0, 1, 4, 2, 3], [",", [["?", 45], 115]]], [60, "e", [], [",", []]], [115, "t", [0, 1, 4, 2, 324, 103], 5], [44, "t", [0, 1, 4, 2, 3], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 31, 32, 33, 34, 27, 28, 29, 23, 26, 35, 24, 21, 22, 54]]]], [61, "e", [0, 1, 4, 2, 3], [",", [["+", 44], ["?", 175]]]], [86, "e", [], [",", []]], [325, "e", [], [",", []]], [87, "e", [], [",", []]], [88, "e", [], [",", []]], [326, "e", [], [",", []]], [27, "e", [], [",", []]], [29, "e", [], [",", []]], [28, "e", [], [",", []]], [23, "t", [0, 1, 47, 108, 4, 2, 3, 38, 39, 40, 41, 42, 43], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 162, 192, 80, 81, 65, 82, 112, 193, 84, 54, 85, 194, 59, 60, 58, 53, 79, 61, 86, 87, 88]]]], [26, "e", [], [",", []]], [206, "e", [0, 1, 4, 2, 3], ["*", 207]], [207, "e", [0, 1, 4, 2, 3], 150], [327, "e", [], [",", []]], [328, "e", [], [",", []]], [151, "t", [0, 1, 2, 3], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [152, "e", [], [",", []]], [157, "t", [0, 1, 4, 2, 3], ["*", ["|", [5, 62, 25, 71, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 23, 26, 21, 22]]]], [161, "t", [0, 1, 77, 78, 4, 2, 3], 5], [153, "t", [0, 1, 208, 4, 2, 3], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22]]]], [329, "e", [], [",", []]], [158, "t", [0, 1, 2, 3], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22, 37]]]], [159, "t", [0, 1, 4, 63, 2, 3], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22]]]], [154, "e", [0, 1, 330, 2, 3], ["*", ["|", [146, 69, 166, 67, 168, 68, 92, 138, 147, 90]]]], [155, "t", [0, 1, 96, 174, 2, 38, 39, 40, 41, 42, 43], 5], [160, "t", [0, 1, 4, 2, 3], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22]]]], [331, "e", [], [",", []]], [332, "e", [], [",", []]], [156, "t", [0, 1, 4, 2, 3], ["*", ["|", [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]]]], [333, "e", [], [",", []]], [103, "t", [0, 1, 208, 4, 2, 3], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22]]]], [334, "e", [], [",", []]], [335, "e", [], [",", []]], [64, "e", [0, 1, 3, 336, 337, 2], [",", [["?", 55], ["*", ["|", [80, 81, 65, 82, 85, 59, 60, 58, 53, 44, 84, 61, 54, 59, 60, 58, 53, 44, 79, 61, 86, 87, 88]]], ["*", 64]]]], [338, "e", [], [",", []]], [195, "e", [0, 1, 4, 46, 339, 116, 340, 341, 342, 343, 344, 2], [",", [["|", [["*", 117], ["*", 209]]], ["|", [[",", [["?", 210], ["?", 211], ["+", 212]]], ["+", 66]]]]]], [210, "e", [0, 1, 4, 46, 48, 49, 50, 51], ["+", 66]], [211, "e", [0, 1, 4, 46, 48, 49, 50, 51], ["+", 66]], [212, "e", [0, 1, 4, 46, 48, 49, 50, 51], ["+", 66]], [209, "e", [0, 1, 4, 46, 213, 116, 48, 49, 50, 51], ["*", 117]], [117, "e", [0, 1, 4, 46, 213, 116, 48, 49, 50, 51], [",", []]], [66, "e", [0, 1, 4, 46, 48, 49, 50, 51], ["+", ["|", [214, 215]]]], [214, "t", [0, 1, 4, 46, 216, 217, 218, 219, 220, 221, 48, 49, 50, 51], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22]]]], [215, "t", [0, 1, 4, 46, 216, 217, 218, 219, 220, 221, 48, 49, 50, 51], ["*", ["|", [5, 25, 30, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 36, 33, 34, 31, 32, 27, 28, 29, 23, 26, 35, 24, 21, 22]]]], [34, "e", [], [",", []]], [345, "e", [], [",", []]], [346, "e", [], [",", []]], [118, "e", [0, 1, 347, 2, 3, 348], [",", [222, ["?", 223], ["?", 224]]]], [222, "e", [0, 1], [",", [["?", 204], 177]]], [223, "e", [0, 1, 2], ["*", ["|", [64, 80, 81, 65, 82, 85, 59, 60, 58, 53, 44, 84, 61, 54, 59, 60, 58, 53, 44, 79, 61, 86, 87, 88]]]], [224, "e", [0, 1], ["~", [["?", 111], ["?", 206]]]], [349, "e", [], [",", []]], [350, "e", [], [",", []]], [351, "e", [], [",", []]]]] };
 
   let TextureJATS = textureXmlUtils_cjs_12(TextureJATSData,
     TEXTURE_JATS_PUBLIC_ID,
@@ -16319,7 +16354,7 @@
   /* eslint-disable no-template-curly-in-string */
   var ArticleToolbarPackage = {
     name: 'article-toolbar',
-    configure (config) {
+    configure(config) {
       config.addToolPanel('toolbar', [
         {
           name: 'document-tools',
@@ -16675,7 +16710,7 @@
 
   var ManuscriptContentPackage = {
     name: 'manuscript-content',
-    configure (config) {
+    configure(config) {
       config.addComponent('abstract', AbstractComponent);
       config.addComponent('authors-list', AuthorsListComponent);
       config.addComponent('bold', BoldComponent);
@@ -16757,7 +16792,7 @@
   };
 
   class SaveCommand extends substance.Command {
-    getCommandState (params, context) {
+    getCommandState(params, context) {
       let archive = context.archive;
       if (!archive || !archive.hasPendingChanges()) {
         return substance.Command.DISABLED
@@ -16768,14 +16803,14 @@
       }
     }
 
-    execute (params, context) {
+    execute(params, context) {
       context.editorSession.getRootComponent().send('save');
     }
   }
 
   var PersistencePackage = {
     name: 'Persistence',
-    configure (config) {
+    configure(config) {
       config.addCommand('save', SaveCommand, {
         commandGroup: 'persistence'
       });
@@ -16788,12 +16823,12 @@
 
   var DropFigure = {
     type: 'drop-asset',
-    match (params) {
+    match(params) {
       // Mime-type starts with 'image/'
       let isImage = params.file.type.indexOf('image/') === 0;
       return params.type === 'file' && isImage
     },
-    drop (tx, params, context) {
+    drop(tx, params, context) {
       let api = context.api;
       api._insertFigures([params.file]);
     }
@@ -16810,13 +16845,13 @@
    * It is not yet clear, how much this can be generalized. Thus is not part of the app kit yet.
    */
   class EditorWorkflow extends substance.Component {
-    constructor (...args) {
+    constructor(...args) {
       super(...args);
 
       this._initialize(this.props);
     }
 
-    _initialize (props) {
+    _initialize(props) {
       let parentEditorSession = this._getParentEditorSession();
 
       let config = this._getConfig();
@@ -16841,11 +16876,11 @@
       editorSession.initialize();
     }
 
-    _getConfig () {
+    _getConfig() {
       throw new Error('This method is abstract')
     }
 
-    _getInitialEditorState () {
+    _getInitialEditorState() {
       // TODO: this might not be generic
       let parentEditorState = this._getParentEditorState();
       return {
@@ -16854,27 +16889,27 @@
       }
     }
 
-    _getWorkflowId () {
+    _getWorkflowId() {
       return substance.uuid()
     }
 
-    _getParentEditorState () {
+    _getParentEditorState() {
       return this._getParentEditorSession().editorState
     }
 
-    _getParentEditorSession () {
+    _getParentEditorSession() {
       return this._getParentContext().editorSession
     }
 
-    _getParentContext () {
+    _getParentContext() {
       return this.getParent().context
     }
 
-    _createAPI () {
+    _createAPI() {
       throw new Error('This method is method is abstract.')
     }
 
-    getActionHandlers () {
+    getActionHandlers() {
       return {
         executeCommand: this._executeCommand,
         toggleOverlay: this._toggleOverlay,
@@ -16883,11 +16918,11 @@
       }
     }
 
-    dispose () {
+    dispose() {
       this.editorSession.dispose();
     }
 
-    render ($$) {
+    render($$) {
       let el = $$('div').addClass(this._getClassNames());
       // ATTENTION: don't let mousedowns and clicks pass, otherwise the parent will null the selection
       el.on('mousedown', this._onMousedown)
@@ -16899,47 +16934,47 @@
       return el
     }
 
-    _renderKeyTrap ($$) {
+    _renderKeyTrap($$) {
       return $$('textarea').addClass('se-keytrap').ref('keytrap')
         .css({ position: 'absolute', width: 0, height: 0, opacity: 0 })
         .on('keydown', this._onKeydown)
-        // TODO: copy'n'paste support?
-        // .on('copy', this._onCopy)
-        // .on('paste', this._onPaste)
-        // .on('cut', this._onCut)
+      // TODO: copy'n'paste support?
+      // .on('copy', this._onCopy)
+      // .on('paste', this._onPaste)
+      // .on('cut', this._onCut)
     }
 
-    _renderContent ($$) {}
+    _renderContent($$) { }
 
-    _getClassNames () {
+    _getClassNames() {
       return 'sc-editor-workflow'
     }
 
-    beforeClose () {
+    beforeClose() {
       this.editorSession.commitChanges();
     }
 
-    getComponentRegistry () {
+    getComponentRegistry() {
       return this.config.getComponentRegistry()
     }
 
-    getContentPanel () {
+    getContentPanel() {
       return this.refs.contentPanel
     }
 
-    _executeCommand (name, params) {
+    _executeCommand(name, params) {
       this.editorSession.executeCommand(name, params);
     }
 
-    _scrollElementIntoView (el, force) {
+    _scrollElementIntoView(el, force) {
       this.refs.editor._scrollElementIntoView(el, force);
     }
 
-    _scrollTo (params) {
+    _scrollTo(params) {
       this.refs.editor._scrollTo(params);
     }
 
-    _toggleOverlay (overlayId) {
+    _toggleOverlay(overlayId) {
       const appState = this.appState;
       if (appState.overlayId === overlayId) {
         appState.overlayId = null;
@@ -16949,7 +16984,7 @@
       appState.propagateUpdates();
     }
 
-    _onClick (e) {
+    _onClick(e) {
       substance.domHelpers.stopAndPrevent(e);
       let focusedSurface = this.editorSession.getFocusedSurface();
       if (focusedSurface) {
@@ -16958,7 +16993,7 @@
       this.editorSession.setSelection(null);
     }
 
-    _onKeydown (e) {
+    _onKeydown(e) {
       let handled = this.context.keyboardManager.onKeydown(e, this.context);
       if (handled) {
         e.stopPropagation();
@@ -16967,7 +17002,7 @@
       return handled
     }
 
-    _onMousedown (e) {
+    _onMousedown(e) {
       e.stopPropagation();
     }
   }
@@ -16981,42 +17016,42 @@
    * This is an artificial Model used to control the content displayed in the Metadata view.
    */
   class MetadataModel {
-    constructor (api) {
+    constructor(api) {
       this._api = api;
       this._sections = [
-     /*   { name: 'article-information', model: new ArticleInformationSectionModel(api) },
-        { name: 'abstracts', model: new AbstractsSectionModel(api) },
-        { name: 'authors', model: createValueModel(api, ['metadata', 'authors']) },
-        { name: 'editors', model: createValueModel(api, ['metadata', 'editors']) },
-        { name: 'groups', model: createValueModel(api, ['metadata', 'groups']) },
-        { name: 'affiliations', model: createValueModel(api, ['metadata', 'affiliations']) },
-        { name: 'funders', model: createValueModel(api, ['metadata', 'funders']) },
-        { name: 'keywords', model: createValueModel(api, ['metadata', 'keywords']) },
-        { name: 'subjects', model: createValueModel(api, ['metadata', 'subjects']) },*/
+        /*   { name: 'article-information', model: new ArticleInformationSectionModel(api) },
+           { name: 'abstracts', model: new AbstractsSectionModel(api) },
+           { name: 'authors', model: createValueModel(api, ['metadata', 'authors']) },
+           { name: 'editors', model: createValueModel(api, ['metadata', 'editors']) },
+           { name: 'groups', model: createValueModel(api, ['metadata', 'groups']) },
+           { name: 'affiliations', model: createValueModel(api, ['metadata', 'affiliations']) },
+           { name: 'funders', model: createValueModel(api, ['metadata', 'funders']) },
+           { name: 'keywords', model: createValueModel(api, ['metadata', 'keywords']) },
+           { name: 'subjects', model: createValueModel(api, ['metadata', 'subjects']) },*/
         // TODO: references are not really metadata. This should be edited in the Manuscript directly
         // for the time being we leave it as it is
         { name: 'references', model: createValueModel(api, ['article', 'references']) }
       ];
     }
 
-    getSections () {
+    getSections() {
       return this._sections
     }
   }
 
   class CardComponent extends substance.Component {
-    didMount () {
+    didMount() {
       // Note: without a 'managed' approach every card component needs to listen to selection updates
       // TODO: consider to use a reducer that maps the selection to another variable, e.g. activeCard
       // then the cards would not be triggered on every other change
       this.context.editorState.addObserver(['selection'], this._onSelectionChange, this, { stage: 'render' });
     }
 
-    dispose () {
+    dispose() {
       this.context.editorState.removeObserver(this);
     }
 
-    render ($$) {
+    render($$) {
       const node = this.props.node;
       const nodeId = node.id;
       const children = this.props.children;
@@ -17033,17 +17068,17 @@
       return el
     }
 
-    _getClassNames () {
+    _getClassNames() {
       return `sc-card sm-${this.props.node.type}`
     }
 
-    _toggleCardSelection () {
+    _toggleCardSelection() {
       const node = this.props.node;
       const api = this.context.api;
       api.selectCard(node.id);
     }
 
-    _onSelectionChange (sel) {
+    _onSelectionChange(sel) {
       if (sel && sel.customType === 'card') {
         if (sel.nodeId === this.props.node.id) {
           this.el.addClass('sm-selected');
@@ -17055,7 +17090,7 @@
       }
     }
 
-    _onMousedown (e) {
+    _onMousedown(e) {
       // Note: stopping propagation so that no-one else is doing somthing undesired
       // and selecting the card on right-mousedown
       e.stopPropagation();
@@ -17064,7 +17099,7 @@
       }
     }
 
-    _onClick (e) {
+    _onClick(e) {
       substance.domHelpers.stopAndPrevent(e);
       this._toggleCardSelection();
     }
@@ -17073,7 +17108,7 @@
   // Note: This is used for values of type 'collection'
   // where every item is rendered as a single card
   class MetadataCollectionComponent extends ModelComponent {
-    render ($$) {
+    render($$) {
       const model = this.props.model;
       let items = model.getItems();
       let el = $$('div').addClass('sc-collection-editor');
@@ -17083,7 +17118,7 @@
           $$(CardComponent, {
             node: item,
             label: item.type
-          // TODO: maybe it would be better to use an explicit prop, then the implicit one
+            // TODO: maybe it would be better to use an explicit prop, then the implicit one
           }).append(
             $$(ItemEditor, {
               node: item,
@@ -17096,7 +17131,7 @@
     }
 
     // TODO: this should go into a common helper
-    _getItemComponentClass (item) {
+    _getItemComponentClass(item) {
       let ItemComponent = this.getComponent(item.type, true);
       if (!ItemComponent) {
         // try to find a component registered for a parent type
@@ -17106,7 +17141,7 @@
     }
 
     // TODO: this should go into a common helper
-    _getParentTypeComponent (node) {
+    _getParentTypeComponent(node) {
       let superTypes = node.getSchema().getSuperTypes();
       for (let type of superTypes) {
         let NodeComponent = this.getComponent(type, true);
@@ -17116,15 +17151,15 @@
   }
 
   class MetadataSection extends substance.Component {
-    didMount () {
+    didMount() {
       addModelObserver(this.props.model, this._onModelUpdate, this);
     }
 
-    dispose () {
+    dispose() {
       removeModelObserver(this);
     }
 
-    render ($$) {
+    render($$) {
       const model = this.props.model;
       const name = this.props.name;
       // const label = this.getLabel(model.id)
@@ -17164,7 +17199,7 @@
 
     // ATTENTION: doing incremental update manually to avoid double rerendering of child collection
     // TODO: it would be good if Substance could avoid rerendering a component twice in one run
-    _onModelUpdate () {
+    _onModelUpdate() {
       let model = this.props.model;
       if (model.type === 'collection') {
         if (model.length === 0) {
@@ -17177,7 +17212,7 @@
   }
 
   class MetadataSectionTOCEntry extends ModelComponent {
-    render ($$) {
+    render($$) {
       const name = this.props.name;
       const model = this.props.model;
       let el = $$('div').addClass('sc-meta-section-toc-entry sc-toc-entry')
@@ -17200,7 +17235,7 @@
       return el
     }
 
-    handleClick (event) {
+    handleClick(event) {
       event.stopPropagation();
       event.preventDefault();
       // this is handled by MetadataEditor
@@ -17217,11 +17252,11 @@
 
   class ExperimentalArticleValidator {
     // TODO: maybe we want to use ArticleAPI here
-    constructor (api) {
+    constructor(api) {
       this._api = api;
     }
 
-    initialize () {
+    initialize() {
       let article = this._getArticle();
       let editorState = this._getEditorState();
       substance.forEach(article.getNodes(), node => {
@@ -17231,7 +17266,7 @@
       editorState.addObserver(['document'], this._onDocumentChange, this, { stage: 'update' });
     }
 
-    dispose () {
+    dispose() {
       let editorState = this._getEditorState();
       editorState.removeObserver(this);
     }
@@ -17239,7 +17274,7 @@
     /*
       Thought: potentially there are different kind of issues
     */
-    clearIssues (path, type) {
+    clearIssues(path, type) {
       // Note: storing the issues grouped by propertyName in node['@issues']
       let nodeIssues = this._getNodeIssues(path[0]);
       nodeIssues.clear(substance.getKeyForPath(path.slice(1)), type);
@@ -17249,18 +17284,18 @@
     /*
       Thoughts: adding issues one-by-one, and clearing by type
     */
-    addIssue (path, issue) {
+    addIssue(path, issue) {
       // console.log('ArticleValidator: adding issue for %s', getKeyForPath(path), issue)
       let nodeIssues = this._getNodeIssues(path[0]);
       nodeIssues.add(substance.getKeyForPath(path.slice(1)), issue);
       this._markAsDirty(path);
     }
 
-    _getEditorState () {
+    _getEditorState() {
       return this._api.editorSession.editorState
     }
 
-    _markAsDirty (path) {
+    _markAsDirty(path) {
       let editorState = this._getEditorState();
       // Note: marking both the node and the property as dirty
       const documentObserver = editorState._getDocumentObserver();
@@ -17270,7 +17305,7 @@
       documentObserver.setDirty(issuesPath.concat(path.slice(1)));
     }
 
-    _getNodeIssues (nodeId) {
+    _getNodeIssues(nodeId) {
       const article = this._getArticle();
       let node = article.get(nodeId);
       let issues = node['@issues'];
@@ -17285,7 +17320,7 @@
       Thoughts: the validator is triggered on document change, analyzing the change
       and triggering registered validators accordingly.
     */
-    _onDocumentChange (change) {
+    _onDocumentChange(change) {
       // ATTENTION: this is only a prototype implementation
       // This must be redesigned/rewritten when we move further
       const article = this._getArticle();
@@ -17307,11 +17342,11 @@
       });
     }
 
-    _getArticle () {
+    _getArticle() {
       return this._api.getDocument()
     }
 
-    _getApi () {
+    _getApi() {
       return this._api
     }
   }
@@ -17323,7 +17358,7 @@
   };
 
   const CheckRequiredFields = {
-    onCreate (validator, node) {
+    onCreate(validator, node) {
       const api = validator._getApi();
       let data = node.toJSON();
       Object.keys(data).forEach(name => {
@@ -17332,7 +17367,7 @@
         }
       });
     },
-    onUpdate (validator, node, path, value) {
+    onUpdate(validator, node, path, value) {
       const api = validator._getApi();
       if (api._isFieldRequired([node.type].concat(path.slice(1)))) {
         validator.clearIssues(path, FIELD_IS_REQUIRED.type);
@@ -17345,15 +17380,15 @@
   };
 
   class NodeIssues {
-    constructor () {
+    constructor() {
       this._issuesByProperty = new Map();
     }
 
-    get (propName) {
+    get(propName) {
       return this._issuesByProperty.get(propName)
     }
 
-    add (propName, issue) {
+    add(propName, issue) {
       if (!this._issuesByProperty.has(propName)) {
         this._issuesByProperty.set(propName, []);
       }
@@ -17361,7 +17396,7 @@
       issues.push(issue);
     }
 
-    clear (propName, type) {
+    clear(propName, type) {
       if (this._issuesByProperty.has(propName)) {
         let issues = this._issuesByProperty.get(propName);
         for (let i = issues.length - 1; i >= 0; i--) {
@@ -17375,7 +17410,7 @@
       }
     }
 
-    get size () {
+    get size() {
       let size = 0;
       this._issuesByProperty.forEach(issues => {
         size += issues.length;
@@ -17385,13 +17420,13 @@
   }
 
   class MetadataEditor extends substance.Component {
-    constructor (...args) {
+    constructor(...args) {
       super(...args);
 
       this._initialize(this.props);
     }
 
-    _initialize (props) {
+    _initialize(props) {
       this.articleValidator = new ExperimentalArticleValidator(this.context.api);
       this.model = new MetadataModel(this.context.editorSession);
 
@@ -17400,25 +17435,25 @@
       this.context.editorState._reset();
     }
 
-    getActionHandlers () {
+    getActionHandlers() {
       return {
         'acquireOverlay': this._acquireOverlay,
         'releaseOverlay': this._releaseOverlay
       }
     }
 
-    didMount () {
+    didMount() {
       this._showHideTOC();
       substance.DefaultDOMElement.getBrowserWindow().on('resize', this._showHideTOC, this);
       this.context.editorSession.setRootComponent(this._getContentPanel());
     }
 
-    dispose () {
+    dispose() {
       this.articleValidator.dispose();
       substance.DefaultDOMElement.getBrowserWindow().off(this);
     }
 
-    render ($$) {
+    render($$) {
       let el = $$('div').addClass('sc-metadata-editor');
       el.append(
         this._renderMainSection($$)
@@ -17427,20 +17462,20 @@
       return el
     }
 
-    _renderMainSection ($$) {
+    _renderMainSection($$) {
       let mainSection = $$('div').addClass('se-main-section');
       mainSection.append(
         this._renderToolbar($$),
         $$('div').addClass('se-content-section').append(
           this._renderTOCPane($$),
           this._renderContentPanel($$)
-        // TODO: do we need this ref?
+          // TODO: do we need this ref?
         ).ref('contentSection')
       );
       return mainSection
     }
 
-    _renderToolbar ($$) {
+    _renderToolbar($$) {
       const Toolbar = this.getComponent('toolbar');
       let config = this.context.config;
       const items = config.getToolPanel('toolbar');
@@ -17452,7 +17487,7 @@
       )
     }
 
-    _renderTOCPane ($$) {
+    _renderTOCPane($$) {
       const sections = this.model.getSections();
       let el = $$('div').addClass('se-toc-pane').ref('tocPane');
       let tocEl = $$('div').addClass('se-toc');
@@ -17470,14 +17505,14 @@
       return el
     }
 
-    _renderContentPanel ($$) {
+    _renderContentPanel($$) {
       const sections = this.model.getSections();
       const ScrollPane = this.getComponent('scroll-pane');
 
       let contentPanel = $$(ScrollPane, {
         contextMenu: 'custom',
         scrollbarPosition: 'right'
-      // NOTE: this ref is needed to access the root element of the editable content
+        // NOTE: this ref is needed to access the root element of the editable content
       }).ref('contentPanel');
 
       let sectionsEl = $$('div').addClass('se-sections');
@@ -17496,7 +17531,7 @@
       return contentPanel
     }
 
-    _renderMainOverlay ($$) {
+    _renderMainOverlay($$) {
       const panelProvider = () => this.refs.contentPanel;
       return $$(OverlayCanvas, {
         panelProvider,
@@ -17504,7 +17539,7 @@
       }).ref('overlay')
     }
 
-    _renderContextMenu ($$) {
+    _renderContextMenu($$) {
       const config = this.context.config;
       const ContextMenu = this.getComponent('context-menu');
       const items = config.getToolPanel('context-menu');
@@ -17515,15 +17550,15 @@
       })
     }
 
-    _getContentPanel () {
+    _getContentPanel() {
       return this.refs.contentPanel
     }
 
-    _getTheme () {
+    _getTheme() {
       return 'dark'
     }
 
-    _onKeydown (e) {
+    _onKeydown(e) {
       let handled = this.context.keyboardManager.onKeydown(e, this.context);
       if (handled) {
         e.stopPropagation();
@@ -17532,11 +17567,11 @@
       return handled
     }
 
-    _scrollElementIntoView (el, force) {
+    _scrollElementIntoView(el, force) {
       this._getContentPanel().scrollElementIntoView(el, !force);
     }
 
-    _scrollTo (params) {
+    _scrollTo(params) {
       let selector;
       if (params.nodeId) {
         selector = `[data-id="${params.nodeId}"]`;
@@ -17551,7 +17586,7 @@
       }
     }
 
-    _showHideTOC () {
+    _showHideTOC() {
       let contentSectionWidth = this.refs.contentSection.el.width;
       if (contentSectionWidth < 960) {
         this.el.addClass('sm-compact');
@@ -17560,25 +17595,25 @@
       }
     }
 
-    _acquireOverlay (...args) {
+    _acquireOverlay(...args) {
       this.refs.overlay.acquireOverlay(...args);
     }
 
-    _releaseOverlay (...args) {
+    _releaseOverlay(...args) {
       this.refs.overlay.releaseOverlay(...args);
     }
   }
 
   class MetadataAPI extends ArticleAPI {
-    selectCard (nodeId) {
+    selectCard(nodeId) {
       this._setSelection(this._createCardSelection(nodeId));
     }
 
-    _createEntitySelection (node) {
+    _createEntitySelection(node) {
       return this._selectFirstRequiredPropertyOfMetadataCard(node)
     }
 
-    _createCardSelection (nodeId) {
+    _createCardSelection(nodeId) {
       return {
         type: 'custom',
         customType: 'card',
@@ -17587,7 +17622,7 @@
     }
 
     // ATTENTION: this only works for meta-data cards, thus the special naming
-    _selectFirstRequiredPropertyOfMetadataCard (node) {
+    _selectFirstRequiredPropertyOfMetadataCard(node) {
       let prop = this._getFirstRequiredProperty(node);
       if (prop) {
         if (prop.isText() || prop.type === 'string') {
@@ -17620,7 +17655,7 @@
   }
 
   class EditMetadataWorkflow extends EditorWorkflow {
-    didMount () {
+    didMount() {
       super.didMount();
 
       this.appState.addObserver(['selection'], this._onSelectionChange, this, { stage: 'finalize' });
@@ -17632,34 +17667,34 @@
       }
     }
 
-    dispose () {
+    dispose() {
       super.dispose();
 
       this.appState.removeObserver(this);
     }
 
-    _renderContent ($$) {
+    _renderContent($$) {
       // ATTENTION: ATM it is important to use 'editor' ref
       return $$(MetadataEditor).ref('editor')
     }
 
-    _getClassNames () {
+    _getClassNames() {
       return 'sc-edit-metadata-workflow sc-editor-workflow'
     }
 
-    _getConfig () {
+    _getConfig() {
       return this.getParent().context.config.getConfiguration('metadata')
     }
 
-    _getWorkflowId () {
+    _getWorkflowId() {
       return 'edit-metadata-workflow'
     }
 
-    _createAPI () {
+    _createAPI() {
       return new MetadataAPI(this.editorSession, this.context.archive, this.config, this)
     }
 
-    _onSelectionChange (sel) {
+    _onSelectionChange(sel) {
       if (!sel || sel.isNull() || sel.isCustomSelection()) {
         this.refs.keytrap.el.focus({ preventScroll: true });
       }
@@ -17667,15 +17702,15 @@
   }
 
   class AddReferenceWorkflow extends substance.Component {
-    static get desiredWidth () {
+    static get desiredWidth() {
       return 'large'
     }
 
-    get supportedUploadFormats () {
+    get supportedUploadFormats() {
       return ['CSL-JSON']
     }
 
-    didMount () {
+    didMount() {
       super.didMount();
 
       this.handleActions({
@@ -17683,7 +17718,7 @@
       });
     }
 
-    render ($$) {
+    render($$) {
       let el = $$('div').addClass('sc-add-reference sm-workflow');
 
       const title = $$('div').addClass('se-title').append(
@@ -17715,19 +17750,19 @@
       return el
     }
 
-    _onAdd (type) {
+    _onAdd(type) {
       this.context.api.addReference({ type });
       this.send('closeModal');
       this._openEditReference();
     }
 
-    _onImport (items) {
+    _onImport(items) {
       this.context.api.addReferences(items);
       this.send('closeModal');
       this._openEditReference();
     }
 
-    _openEditReference () {
+    _openEditReference() {
       this.send('executeCommand', 'edit-reference');
     }
   }
@@ -17736,7 +17771,7 @@
 
   var ManuscriptPackage = {
     name: 'ManuscriptEditor',
-    configure (config) {
+    configure(config) {
       config.import(BasePackage);
       config.import(EditorBasePackage);
       config.import(ModelComponentPackage);
@@ -17963,7 +17998,7 @@
       config.addComponent('edit-metadata-workflow', EditMetadataWorkflow);
 
       // Labels
-     // config.addLabel('add-author', 'Add Author')
+      // config.addLabel('add-author', 'Add Author')
       config.addLabel('add-ref', 'Add Reference');
       //config.addLabel('article-info', 'Article Information')
       //config.addLabel('article-record', 'Article Record')
@@ -18133,7 +18168,7 @@
   /* eslint-disable no-template-curly-in-string */
   var EntityLabelsPackage = {
     name: 'entity-labels',
-    configure (config) {
+    configure(config) {
       // EXPERIMENTAL: I want to move to more natural label specifications
       config.addLabel('enter-something', 'Enter ${something}');
 
@@ -18207,6 +18242,8 @@
 
       config.addLabel('editors', 'Editors');
       config.addLabel('edit-editors', 'Edit Editors');
+      config.addLabel('compilers', 'Compilers');
+      config.addLabel('edit-compilers', 'Edit Compilers');
 
       config.addLabel('translators', 'Translators');
       config.addLabel('edit-translators', 'Edit Translators');
@@ -18330,7 +18367,7 @@
   };
 
   class _CardCommand extends substance.Command {
-    getCommandState (params, context) {
+    getCommandState(params, context) {
       let appState = context.editorState;
       let sel = appState.selection;
       if (sel && sel.customType === 'card') {
@@ -18346,61 +18383,61 @@
       return { disabled: true }
     }
 
-    _canApplyCommand (context, node) {
+    _canApplyCommand(context, node) {
       throw new Error('This method is abstract')
     }
 
-    _getLabel (context, node) {
+    _getLabel(context, node) {
       throw new Error('This method is abstract')
     }
   }
 
   class RemoveEntityCommand extends _CardCommand {
-    execute (params, context) {
+    execute(params, context) {
       let commandState = params.commandState;
       let nodeId = commandState.nodeId;
       context.api.removeEntity(nodeId);
     }
 
-    _canApplyCommand (context, node) {
+    _canApplyCommand(context, node) {
       return context.api.canRemoveEntity(node)
     }
 
-    _getLabel (context, node) {
+    _getLabel(context, node) {
       let labelProvider = context.labelProvider;
       return `${labelProvider.getLabel('remove-something', { something: labelProvider.getLabel(node.type) })}`
     }
   }
 
   class MoveEntityUpCommand extends _CardCommand {
-    execute (params, context) {
+    execute(params, context) {
       let commandState = params.commandState;
       let nodeId = commandState.nodeId;
       context.api.moveEntityUp(nodeId);
     }
 
-    _canApplyCommand (context, node) {
+    _canApplyCommand(context, node) {
       return context.api.canMoveEntityUp(node)
     }
 
-    _getLabel (context, node) {
+    _getLabel(context, node) {
       let labelProvider = context.labelProvider;
       return `${labelProvider.getLabel('move-something-up', { something: labelProvider.getLabel(node.type) })}`
     }
   }
 
   class MoveEntityDownCommand extends _CardCommand {
-    execute (params, context) {
+    execute(params, context) {
       let commandState = params.commandState;
       let nodeId = commandState.nodeId;
       context.api.moveEntityDown(nodeId);
     }
 
-    _canApplyCommand (context, node) {
+    _canApplyCommand(context, node) {
       return context.api.canMoveEntityDown(node)
     }
 
-    _getLabel (context, node) {
+    _getLabel(context, node) {
       let labelProvider = context.labelProvider;
       return `${labelProvider.getLabel('move-something-down', { something: labelProvider.getLabel(node.type) })}`
     }
@@ -18411,7 +18448,7 @@
 
   var MetadataPackage = {
     name: 'metadata',
-    configure (articleConfig) {
+    configure(articleConfig) {
       let config = articleConfig.createSubConfiguration('metadata');
 
       // TODO: it would be greate to reuse config from the article toolbar.
@@ -18445,14 +18482,14 @@
               type: 'group',
               label: 'entities',
               items: [
-               /* { type: 'command', name: 'add-author', label: 'author' },
-                { type: 'command', name: 'add-custom-abstract', label: 'custom-abstract' },
-                { type: 'command', name: 'add-editor', label: 'editor' },
-                { type: 'command', name: 'add-group', label: 'group' },
-                { type: 'command', name: 'add-affiliation', label: 'affiliation' },
-                { type: 'command', name: 'add-funder', label: 'funder' },
-                { type: 'command', name: 'add-keyword', label: 'keyword' },
-                { type: 'command', name: 'add-subject', label: 'subject' }*/
+                /* { type: 'command', name: 'add-author', label: 'author' },
+                 { type: 'command', name: 'add-custom-abstract', label: 'custom-abstract' },
+                 { type: 'command', name: 'add-editor', label: 'editor' },
+                 { type: 'command', name: 'add-group', label: 'group' },
+                 { type: 'command', name: 'add-affiliation', label: 'affiliation' },
+                 { type: 'command', name: 'add-funder', label: 'funder' },
+                 { type: 'command', name: 'add-keyword', label: 'keyword' },
+                 { type: 'command', name: 'add-subject', label: 'subject' }*/
               ]
             },
             {
@@ -18505,20 +18542,20 @@
         }
       ]);
 
-    /*  config.addComponent('article-metadata', ArticleMetadataComponent)
-      config.addComponent('article-information', ArticleInformationSectionComponent)
-      config.addComponent(CustomAbstract.type, CustomAbstractComponent)
-      config.addComponent('@abstracts', AbstractsSectionComponent)
-
-      config.addCommand('add-author', AddAuthorCommand)
-      config.addCommand('add-affiliation', AddAffiliationCommand)
-      config.addCommand('add-custom-abstract', AddCustomAbstractCommand)
-      config.addCommand('add-editor', AddEditorCommand)
-      config.addCommand('add-group', AddGroupCommand)
-      config.addCommand('add-funder', AddFunderCommand)
-      config.addCommand('add-keyword', AddKeywordCommand)
-      config.addCommand('add-subject', AddSubjectCommand)
-  */
+      /*  config.addComponent('article-metadata', ArticleMetadataComponent)
+        config.addComponent('article-information', ArticleInformationSectionComponent)
+        config.addComponent(CustomAbstract.type, CustomAbstractComponent)
+        config.addComponent('@abstracts', AbstractsSectionComponent)
+  
+        config.addCommand('add-author', AddAuthorCommand)
+        config.addCommand('add-affiliation', AddAffiliationCommand)
+        config.addCommand('add-custom-abstract', AddCustomAbstractCommand)
+        config.addCommand('add-editor', AddEditorCommand)
+        config.addCommand('add-group', AddGroupCommand)
+        config.addCommand('add-funder', AddFunderCommand)
+        config.addCommand('add-keyword', AddKeywordCommand)
+        config.addCommand('add-subject', AddSubjectCommand)
+    */
       config.addCommand('remove-entity', RemoveEntityCommand, {
         commandGroup: 'collection'
       });
@@ -18529,14 +18566,14 @@
         commandGroup: 'collection'
       });
 
-    /*  config.addLabel('abstracts', 'Abstracts')
-      config.addLabel('article-information', 'Article Information')
-      config.addLabel('article-metadata', 'Article Metadata')
-      config.addLabel('entities', 'Entities')
-      config.addLabel('groups', 'Groups')
-      config.addLabel('issueTitle', 'Issue Title')
-      config.addLabel('keywords', 'Keywords')
-      config.addLabel('affiliations', 'Affiliations')*/
+      /*  config.addLabel('abstracts', 'Abstracts')
+        config.addLabel('article-information', 'Article Information')
+        config.addLabel('article-metadata', 'Article Metadata')
+        config.addLabel('entities', 'Entities')
+        config.addLabel('groups', 'Groups')
+        config.addLabel('issueTitle', 'Issue Title')
+        config.addLabel('keywords', 'Keywords')
+        config.addLabel('affiliations', 'Affiliations')*/
       config.addLabel('references', 'References');
       // TODO: provide a means to override the label via commandState,
       // i.e. the command itself stores the desired lable in commandState.label
@@ -18555,24 +18592,24 @@
   };
 
   class BodyConverter extends SectionContainerConverter {
-    get type () { return 'body' }
+    get type() { return 'body' }
 
-    get tagName () { return 'body' }
+    get tagName() { return 'body' }
   }
 
   class BoldConverter$1 {
-    get type () { return 'bold' }
+    get type() { return 'bold' }
 
-    get tagName () { return 'bold' }
+    get tagName() { return 'bold' }
   }
 
   // ATTENTION: ATM we only allow content-type 'math/tex'
   class BlockFormulaConverter {
-    get type () { return 'block-formula' }
+    get type() { return 'block-formula' }
 
-    get tagName () { return 'disp-formula' }
+    get tagName() { return 'disp-formula' }
 
-    import (el, node, importer) {
+    import(el, node, importer) {
       let labelEl = findChild(el, 'label');
       let contentType = el.attr('content-type');
       if (contentType && contentType !== 'math/tex') {
@@ -18587,11 +18624,11 @@
       }
     }
 
-    _getContent (el) {
+    _getContent(el) {
       return findChild(el, 'tex-math')
     }
 
-    export (node, el, exporter) {
+    export(node, el, exporter) {
       let $$ = exporter.$$;
 
       // Note: ATM only math/tex is supported and thus hard-coded here
@@ -18617,11 +18654,11 @@
    * the quote content by using a dedicated text property 'attrib'
    */
   class BlockQuoteConverter {
-    get type () { return 'block-quote' }
+    get type() { return 'block-quote' }
 
-    get tagName () { return 'disp-quote' }
+    get tagName() { return 'disp-quote' }
 
-    import (el, node, importer) {
+    import(el, node, importer) {
       let $$ = el.createElement.bind(el.getOwnerDocument());
       let pEls = findAllChildren(el, 'p');
       if (pEls.length === 0) {
@@ -18636,7 +18673,7 @@
       });
     }
 
-    export (node, el, exporter) {
+    export(node, el, exporter) {
       let $$ = exporter.$$;
       let content = node.resolve('content');
       el.append(
@@ -18655,20 +18692,20 @@
   }
 
   class BreakConverter {
-    get type () { return 'break' }
+    get type() { return 'break' }
 
-    get tagName () { return 'break' }
+    get tagName() { return 'break' }
   }
 
   class FigurePanelConverter {
-    get type () { return 'figure-panel' }
+    get type() { return 'figure-panel' }
 
     // ATTENTION: figure-panel is represented in JATS
     // instead there is the distinction between fig-group and fig
     // which are represented as Figure in Texture
-    get tagName () { return 'fig' }
+    get tagName() { return 'fig' }
 
-    import (el, node, importer) {
+    import(el, node, importer) {
       let $$ = el.createElement.bind(el.getOwnerDocument());
       let labelEl = findChild(el, 'label');
       let contentEl = this._getContent(el);
@@ -18727,11 +18764,11 @@
       });
     }
 
-    _getContent (el) {
+    _getContent(el) {
       return findChild(el, 'graphic')
     }
 
-    export (node, el, exporter) {
+    export(node, el, exporter) {
       let $$ = exporter.$$;
       // ATTENTION: this helper retrieves the label from the state
       let label = getLabel(node);
@@ -18790,7 +18827,7 @@
     }
 
     // EXPERIMENTAL see comment above
-    _unwrapDisplayElements (el) {
+    _unwrapDisplayElements(el) {
       let children = el.getChildren();
       let L = children.length;
       for (let i = L - 1; i >= 0; i--) {
@@ -18806,7 +18843,7 @@
       }
     }
 
-    _wrapDisplayElements (el) {
+    _wrapDisplayElements(el) {
       let children = el.getChildren();
       let L = children.length;
       for (let i = L - 1; i >= 0; i--) {
@@ -18820,13 +18857,13 @@
   }
 
   class FigureConverter {
-    get type () { return 'figure' }
+    get type() { return 'figure' }
 
     // ATTENTION: this converter will create either a <fig> or a <fig-group>
     // element depending on the number of Figure panels
-    get tagName () { return 'figure' }
+    get tagName() { return 'figure' }
 
-    matchElement (el, importer) {
+    matchElement(el, importer) {
       if (el.is('fig') || el.is('fig-group')) {
         // Note: do not use this converter if we are already converting a figure
         let context = importer.state.getCurrentContext();
@@ -18837,7 +18874,7 @@
       }
     }
 
-    import (el, node, importer) {
+    import(el, node, importer) {
       // single panel figure
       let panelIds = [];
       if (el.is('fig')) {
@@ -18852,14 +18889,14 @@
           id: importer.nextId('fig'),
           panels: [figPanelData.id]
         }
-      // multi-panel figure
+        // multi-panel figure
       } else if (el.is('fig-group')) {
         panelIds = el.findAll('fig').map(child => importer.convertElement(child).id);
       }
       node.panels = panelIds;
     }
 
-    export (node, el, exporter) {
+    export(node, el, exporter) {
       let doc = exporter.getDocument();
       if (node.panels.length === 1) {
         return exporter.convertNode(doc.get(node.panels[0]))
@@ -18875,17 +18912,17 @@
   // TODO: at some point we want to retain the label and determine if the label should be treated as custom
   // or be generated.
   class FootnoteConverter {
-    get type () { return 'footnote' }
+    get type() { return 'footnote' }
 
-    get tagName () { return 'fn' }
+    get tagName() { return 'fn' }
 
     // NOTE: we don’t support custom labels at the moment, so we will ignore input from fn > label
-    import (el, node, importer) {
+    import(el, node, importer) {
       let pEls = findAllChildren(el, 'p');
       node.content = pEls.map(el => importer.convertElement(el).id);
     }
 
-    export (node, el, exporter) {
+    export(node, el, exporter) {
       const $$ = exporter.$$;
       // We gonna need to find another way for node states. I.e. for labels we will have
       // a hybrid scenario where the labels are either edited manually, and thus we need to record ops,
@@ -18906,20 +18943,20 @@
 
   class ElementCitationConverter {
     // Note: this will create different types according to the attributes in the JATS element
-    get type () { return 'reference' }
+    get type() { return 'reference' }
 
-    matchElement (el) {
+    matchElement(el) {
       return el.is('ref')
     }
 
-    import (el, node, importer) {
+    import(el, node, importer) {
       const doc = importer.state.doc;
       let elementCitation = el.find('element-citation');
       if (!elementCitation) {
         let mixedCitation = el.find('mixed-citation');
-          _importMixedCitation(mixedCitation, node, doc, importer);
+        _importMixedCitation(mixedCitation, node, doc, importer);
         if (!mixedCitation) {
-         throw new Error('<element-citation> or <mixed-citation> is required')
+          throw new Error('<element-citation> or <mixed-citation> is required')
         }
       }
       else {
@@ -18929,7 +18966,7 @@
 
     }
 
-    export (node, el, exporter) {
+    export(node, el, exporter) {
       el.tagName = 'ref';
       el.append(
         _exportElementCitation(node, exporter)
@@ -18938,7 +18975,7 @@
     }
   }
 
-  function _importMixedCitation (el, node, doc, importer) {
+  function _importMixedCitation(el, node, doc, importer) {
     const type = el.attr('publication-type');
     node.type = JATS_BIBR_TYPES_TO_INTERNAL[type];
     //_setCitationObjects(node, el);
@@ -18980,7 +19017,7 @@
     });
   }
 
-  function _importElementCitation (el, node, doc, importer) {
+  function _importElementCitation(el, node, doc, importer) {
     const type = el.attr('publication-type');
     node.type = JATS_BIBR_TYPES_TO_INTERNAL[type];
     _setCitationObjects(node, el);
@@ -19000,12 +19037,13 @@
 
     node.authors = _importPersonGroup(el, doc, 'author');
     node.editors = _importPersonGroup(el, doc, 'editor');
+    node.compilers = _importPersonGroup(el, doc, 'compiler');
     node.inventors = _importPersonGroup(el, doc, 'inventor');
     node.sponsors = _importPersonGroup(el, doc, 'sponsor');
     node.translators = _importPersonGroup(el, doc, 'translator');
   }
 
-  function getAnnotatedText (importer, rootEl, selector, path) {
+  function getAnnotatedText(importer, rootEl, selector, path) {
     let el = rootEl.find(selector);
     if (el) {
       return importer.annotatedText(el, path)
@@ -19014,7 +19052,7 @@
     }
   }
 
-  function _importPersonGroup (el, doc, type) {
+  function _importPersonGroup(el, doc, type) {
     let groupEl = el.find(`person-group[person-group-type=${type}]`);
     if (groupEl) {
       return groupEl.children.reduce((ids, childEl) => {
@@ -19027,7 +19065,7 @@
     }
   }
 
-  function _importRefContrib (doc, el) {
+  function _importRefContrib(doc, el) {
     let refContrib = {
       type: 'ref-contrib'
     };
@@ -19047,7 +19085,7 @@
     return doc.create(refContrib)
   }
 
-  function _exportElementCitation (node, exporter) {
+  function _exportElementCitation(node, exporter) {
     const $$ = exporter.$$;
     const doc = node.getDocument();
     const type = node.type;
@@ -19089,6 +19127,7 @@
     // creators
     el.append(_exportPersonGroup($$, doc, node.authors, 'author'));
     el.append(_exportPersonGroup($$, doc, node.editors, 'editor'));
+    el.append(_exportPersonGroup($$, doc, node.compilers, 'compiler'));
     el.append(_exportPersonGroup($$, doc, node.inventors, 'inventor'));
     el.append(_exportPersonGroup($$, doc, node.sponsors, 'sponsor'));
     el.append(_exportPersonGroup($$, doc, node.translators, 'translator'));
@@ -19114,7 +19153,7 @@
     return el
   }
 
-  function _exportPersonGroup ($$, doc, contribIds, personGroupType) {
+  function _exportPersonGroup($$, doc, contribIds, personGroupType) {
     if (contribIds && contribIds.length > 0) {
       let el = $$('person-group').attr('person-group-type', personGroupType);
       contribIds.forEach(id => {
@@ -19127,7 +19166,7 @@
     }
   }
 
-  function _exportRefContrib ($$, refContrib) {
+  function _exportRefContrib($$, refContrib) {
     let el;
     if (refContrib.givenNames) {
       el = $$('name');
@@ -19142,13 +19181,13 @@
     return el
   }
 
-  function _createTextElement$1 ($$, text, tagName, attrs) {
+  function _createTextElement$1($$, text, tagName, attrs) {
     if (text) {
       return $$(tagName).append(text).attr(attrs)
     }
   }
 
-  function _exportAnnotatedText$1 (exporter, path, tagName, attrs) {
+  function _exportAnnotatedText$1(exporter, path, tagName, attrs) {
     const $$ = exporter.$$;
     let text = exporter.getDocument().get(path);
     if (text) {
@@ -19158,7 +19197,7 @@
     }
   }
 
-  function _createMultipleTextElements ($$, text, tagName, attrs) {
+  function _createMultipleTextElements($$, text, tagName, attrs) {
     if (text) {
       const textItems = text.split(';');
       return textItems.map(ti => {
@@ -19168,10 +19207,10 @@
   }
 
   class ExternalLinkConverter {
-    get type () { return 'external-link' }
-    get tagName () { return 'ext-link' }
+    get type() { return 'external-link' }
+    get tagName() { return 'ext-link' }
 
-    import (el, node) {
+    import(el, node) {
       let extLinkType = el.getAttribute('ext-link-type');
       if (extLinkType) {
         node.linkType = extLinkType;
@@ -19181,7 +19220,7 @@
         node.href = href;
       }
     }
-    export (node, el) {
+    export(node, el) {
       if (node.linkType) {
         el.setAttribute('ext-link-type', node.linkType);
       }
@@ -19192,16 +19231,16 @@
   }
 
   class GraphicConverter {
-    get type () { return 'graphic' }
+    get type() { return 'graphic' }
 
-    get tagName () { return 'graphic' }
+    get tagName() { return 'graphic' }
 
-    import (el, node) {
+    import(el, node) {
       node.mimeType = [el.attr('mimetype'), el.attr('mime-subtype')].join('/');
       node.href = el.attr('xlink:href');
     }
 
-    export (node, el) {
+    export(node, el) {
       let mimeData = node.mimeType.split('/');
       el.attr('mimetype', mimeData[0]);
       el.attr('mime-subtype', mimeData[1]);
@@ -19210,9 +19249,9 @@
   }
 
   class HeadingImporter {
-    get type () { return 'heading' }
-    get tagName () { return 'heading' }
-    import (el, node, importer) {
+    get type() { return 'heading' }
+    get tagName() { return 'heading' }
+    import(el, node, importer) {
       // Note: attributes are converted automatically
       node.level = parseInt(node.attributes.level, 10);
       node.content = importer.annotatedText(el, [node.id, 'content']);
@@ -19220,38 +19259,38 @@
   }
 
   class InlineFormulaConverter extends BlockFormulaConverter {
-    get type () { return 'inline-formula' }
+    get type() { return 'inline-formula' }
 
-    get tagName () { return 'inline-formula' }
+    get tagName() { return 'inline-formula' }
   }
 
   class InlineGraphicConverter extends GraphicConverter {
-    get type () { return 'inline-graphic' }
+    get type() { return 'inline-graphic' }
 
-    get tagName () { return 'inline-graphic' }
+    get tagName() { return 'inline-graphic' }
   }
 
   class ItalicConverter$1 {
-    get type () { return 'italic' }
+    get type() { return 'italic' }
 
-    get tagName () { return 'italic' }
+    get tagName() { return 'italic' }
   }
 
   class MonospaceConverter {
-    get type () { return 'monospace' }
+    get type() { return 'monospace' }
 
-    get tagName () { return 'monospace' }
+    get tagName() { return 'monospace' }
   }
 
   // TODO: is it possible to assimilate this implementation to '../html/ListConverter'?
   // obviously HTML lists are different w.r.t. to tagNames
   // but very similar to JATS w.r.t. the content
   class ListConverter$1 {
-    get type () { return 'list' }
+    get type() { return 'list' }
 
-    get tagName () { return 'list' }
+    get tagName() { return 'list' }
 
-    import (el, node, importer) {
+    import(el, node, importer) {
       let doc = importer.getDocument();
       let visited = new Set();
       let items = [];
@@ -19278,7 +19317,7 @@
       node.items = itemIds;
     }
 
-    _extractItems (el, config, items, level, visited) {
+    _extractItems(el, config, items, level, visited) {
       if (el.is('list-item')) items.push({ el, level });
       if (el.is('list')) {
         let listType = el.attr('list-type') || 'bullet';
@@ -19290,7 +19329,7 @@
     }
 
     // ATTENTION: this is pretty rudimentary still
-    export (node, el, exporter) {
+    export(node, el, exporter) {
       const $$ = exporter.$$;
       let newList = substance.renderListNode(node, (arg) => {
         if (arg === 'ol') {
@@ -19314,34 +19353,34 @@
   }
 
   class OverlineConverter {
-    get type () { return 'overline' }
+    get type() { return 'overline' }
 
-    get tagName () { return 'overline' }
+    get tagName() { return 'overline' }
   }
 
   /**
    * A converter for JATS `<p>`.
    */
   class ParagraphConverter$1 {
-    get type () { return 'paragraph' }
+    get type() { return 'paragraph' }
 
-    get tagName () { return 'p' }
+    get tagName() { return 'p' }
 
-    import (el, node, importer) {
+    import(el, node, importer) {
       node.content = importer.annotatedText(el, [node.id, 'content']);
     }
 
-    export (node, el, exporter) {
+    export(node, el, exporter) {
       el.append(exporter.annotatedText([node.id, 'content']));
     }
   }
 
   class PermissionsConverter {
-    get type () { return 'permission' }
+    get type() { return 'permission' }
 
-    get tagName () { return 'permissions' }
+    get tagName() { return 'permissions' }
 
-    import (el, node, importer) {
+    import(el, node, importer) {
       // Extract figure permissions
       let copyrightStatementEl = el.find('copyright-statement');
       if (copyrightStatementEl) {
@@ -19366,7 +19405,7 @@
       }
     }
 
-    export (node, el, exporter) {
+    export(node, el, exporter) {
       let $$ = exporter.$$;
       if (node.copyrightStatement) {
         el.append($$('copyright-statement').append(node.copyrightStatement));
@@ -19397,11 +19436,11 @@
   }
 
   class PreformatConverter$1 {
-    get type () { return 'preformat' }
+    get type() { return 'preformat' }
 
-    get tagName () { return 'preformat' }
+    get tagName() { return 'preformat' }
 
-    import (el, node, importer) {
+    import(el, node, importer) {
       let xml = el.getInnerXML();
       node.preformatType = el.getAttribute('preformat-type') || 'code';
       // ATTENTION: trimming the content to avoid extra TEXTNODES
@@ -19411,7 +19450,7 @@
       node.content = content || '';
     }
 
-    export (node, el, exporter) {
+    export(node, el, exporter) {
       if (node.preformatType) {
         el.setAttribute('preformat-type', node.preformatType);
       }
@@ -19425,35 +19464,35 @@
   }
 
   class SmallCapsConverter {
-    get type () { return 'small-caps' }
+    get type() { return 'small-caps' }
 
-    get tagName () { return 'sc' }
+    get tagName() { return 'sc' }
   }
 
   class StrikeThroughConverter {
-    get type () { return 'strike-through' }
+    get type() { return 'strike-through' }
 
-    get tagName () { return 'strike' }
+    get tagName() { return 'strike' }
   }
 
   class SubscriptConverter {
-    get type () { return 'subscript' }
+    get type() { return 'subscript' }
 
-    get tagName () { return 'sub' }
+    get tagName() { return 'sub' }
   }
 
   class SuperscriptConverter {
-    get type () { return 'superscript' }
+    get type() { return 'superscript' }
 
-    get tagName () { return 'sup' }
+    get tagName() { return 'sup' }
   }
 
   class SupplementaryFileConverter {
-    get type () { return 'supplementary-file' }
+    get type() { return 'supplementary-file' }
 
-    get tagName () { return 'supplementary-material' }
+    get tagName() { return 'supplementary-material' }
 
-    import (el, node, importer) {
+    import(el, node, importer) {
       let $$ = el.createElement.bind(el.getOwnerDocument());
       let labelEl = findChild(el, 'label');
       let captionEl = findChild(el, 'caption');
@@ -19485,7 +19524,7 @@
       node.legend = captionEl.children.map(child => importer.convertElement(child).id);
     }
 
-    export (node, el, exporter) {
+    export(node, el, exporter) {
       let $$ = exporter.$$;
       if (node.mimetype) {
         let mimeData = node.mimetype.split('/');
@@ -19519,16 +19558,16 @@
     }
   }
 
-  function _isRemoteFile (href) {
+  function _isRemoteFile(href) {
     return Boolean(/^\w+:\/\//.exec(href))
   }
 
   class TableFigureConverter extends FigurePanelConverter {
-    get type () { return 'table-figure' }
+    get type() { return 'table-figure' }
 
-    get tagName () { return 'table-wrap' }
+    get tagName() { return 'table-wrap' }
 
-    import (el, node, importer) {
+    import(el, node, importer) {
       super.import(el, node, importer);
 
       const $$ = el.createElement.bind(el.getOwnerDocument());
@@ -19550,7 +19589,7 @@
       }
     }
 
-    export (node, el, exporter) {
+    export(node, el, exporter) {
       const $$ = exporter.$$;
       // TODO: if we decide to store attrib and permissions inside the table-wrap-foot
       // then we should not call super here, because <fig> does not have a footer
@@ -19568,28 +19607,28 @@
       }
     }
 
-    _getContent (el) {
+    _getContent(el) {
       return findChild(el, 'table')
     }
   }
 
   class UnderlineConverter$1 {
-    get type () { return 'underline' }
+    get type() { return 'underline' }
 
-    get tagName () { return 'underline' }
+    get tagName() { return 'underline' }
   }
 
   class XrefConverter {
-    get type () { return 'xref' }
+    get type() { return 'xref' }
 
-    get tagName () { return 'xref' }
+    get tagName() { return 'xref' }
 
-    import (el, node) {
+    import(el, node) {
       node.refType = el.attr('ref-type');
       node.refTargets = (el.attr('rid') || '').split(/\s/);
     }
 
-    export (node, el, exporter) {
+    export(node, el, exporter) {
       el.attr('ref-type', node.refType);
       el.attr('rid', node.refTargets.join(' '));
       let label = getLabel(node);
@@ -19635,11 +19674,11 @@
   ];
 
   class ArticlePlainTextExporter {
-    export (article) {
+    export(article) {
       console.error('TODO: implement full article to plain-text conversion');
     }
 
-    exportNode (node) {
+    exportNode(node) {
       if (node.isContainer()) {
         return this._exportContainer(node)
       } else if (node.isText()) {
@@ -19648,14 +19687,14 @@
       return ''
     }
 
-    _exportContainer (node) {
+    _exportContainer(node) {
       if (!node) return ''
       return node.getNodes().map(node => {
         return this.exportNode(node)
       }).join('\n\n')
     }
 
-    _exportText (doc, path) {
+    _exportText(doc, path) {
       return doc.get(path) || ''
     }
   }
@@ -19667,7 +19706,7 @@
     TODO: there are similar contexts, such as figure legends for instance.
   */
   class NormalizeFn {
-    import (dom) {
+    import(dom) {
       let fns = dom.findAll('fn');
       fns.forEach(fn => {
         // Find all ptags that are nested in another p tag
@@ -19680,7 +19719,7 @@
       });
     }
 
-    export () {
+    export() {
       // nothing
     }
   }
@@ -19693,7 +19732,7 @@
     for this transformation.
   */
   class NormalizeContribGroup {
-    import (dom) {
+    import(dom) {
       let contribGroups = dom.findAll('article-meta > contrib-group');
       if (contribGroups[0]) {
         _normalizeContribGroup(contribGroups[0], 'author');
@@ -19706,12 +19745,12 @@
       }
     }
 
-    export () {
+    export() {
       // nothing
     }
   }
 
-  function _normalizeContribGroup (contribGroup, targetType) {
+  function _normalizeContribGroup(contribGroup, targetType) {
     contribGroup.attr('content-type', targetType);
   }
 
@@ -19722,18 +19761,18 @@
     which would otherwise violate JATS
   */
   class UnwrapBlockLevelElements {
-    import (dom) {
+    import(dom) {
       dom.findAll('body > p').forEach(_pBlock);
     }
 
-    export () {}
+    export() { }
   }
 
   // TODO: add all of them
   const BLOCKS = ['fig', 'fig-group', 'media', 'list', 'disp-formula', 'disp-quote'];
   const isBlock = BLOCKS.reduce((m, n) => { m[n] = true; return m }, {});
 
-  function _pBlock (p) {
+  function _pBlock(p) {
     let parent = p.parentNode;
     let children = p.children;
     let L = children.length;
@@ -19763,7 +19802,7 @@
     }
   }
 
-  function _isEmpty (nodes) {
+  function _isEmpty(nodes) {
     for (let i = 0; i < nodes.length; i++) {
       let child = nodes[i];
       if (!child.isTextNode() || !(/^\s*$/.exec(child.textContent))) return false
@@ -19776,7 +19815,7 @@
     and removes everything except refs from existing ref-list.
   */
   class RefList {
-    import (dom) {
+    import(dom) {
       let refLists = dom.findAll('ref-list');
       if (refLists.length > 0) {
         refLists.forEach(refList => {
@@ -19792,7 +19831,7 @@
       }
     }
 
-    export () {
+    export() {
       // nothing
     }
   }
@@ -19805,7 +19844,7 @@
   ].map(C => new C());
 
   class JATSTransformer {
-    import (jatsDom) {
+    import(jatsDom) {
       // TODO: we should create some kind of report
       trafos.forEach(t => t.import(jatsDom));
       // update the docType so that the rest of the system knows that this should be
@@ -19814,7 +19853,7 @@
       return jatsDom
     }
 
-    export (jatsDom) {
+    export(jatsDom) {
       // set the doctype to the JATS format which we want to produce
       jatsDom.setDoctype('article', JATS_GREEN_1_2_PUBLIC_ID, JATS_GREEN_1_DTD);
     }
@@ -19822,7 +19861,7 @@
 
   var ArticlePackage = {
     name: 'article',
-    configure (config) {
+    configure(config) {
       // register ArticlePanel on the Texture configuration level
       config.addComponent('article', ArticlePanel);
 
@@ -19863,7 +19902,7 @@
 
       let validator = {
         schemaId: TextureJATS.publicId,
-        validate (xmlDom) {
+        validate(xmlDom) {
           return textureXmlUtils_cjs_9(TextureJATS, xmlDom)
         }
       };
@@ -19925,7 +19964,7 @@
   };
 
   // TODO: this is only needed for testing, so we should move this into test helpers
-  function createJatsImporter (doc) {
+  function createJatsImporter(doc) {
     let config = new TextureConfigurator();
     config.import(ArticlePackage);
     let articleConfig = config.getConfiguration('article');
@@ -19943,7 +19982,7 @@
   }
 
   // TODO: this is only needed for testing, so we should move this into test helpers
-  function createJatsExporter (jatsDom, doc) {
+  function createJatsExporter(jatsDom, doc) {
     let config = new TextureConfigurator();
     config.import(ArticlePackage);
     let articleConfig = config.getConfiguration('article');
@@ -19953,7 +19992,7 @@
 
   // HACK: using this to obfuscate loading of modules in nodejs
   // Instead, we should not use `require()` but use stub modules for bundling
-  function _require (p) {
+  function _require(p) {
     let f = require;
     if (substance.platform.inNodeJS || substance.platform.inElectron) {
       return f(p)
@@ -19965,7 +20004,7 @@
   /*
     Retrieves a list of entries recursively, including file names and stats.
   */
-  async function listDir (dir, opts = {}) {
+  async function listDir(dir, opts = {}) {
     return new Promise((resolve, reject) => {
       _list(dir, opts, (err, records) => {
         if (err) reject(err);
@@ -19974,7 +20013,7 @@
     })
   }
 
-  function _list (dir, opts, done) {
+  function _list(dir, opts, done) {
     let fs = opts.fs || _require('fs');
     let path = opts.path || _require('path');
     let results = [];
@@ -19982,7 +20021,7 @@
       if (err) return done(err)
       let pending = list.length;
       if (!pending) return done(null, results)
-      function _continue () {
+      function _continue() {
         if (!--pending) done(null, results);
       }
       list.forEach((name) => {
@@ -20010,13 +20049,13 @@
     });
   }
 
-  async function isDocumentArchive (archiveDir, opts = {}) {
+  async function isDocumentArchive(archiveDir, opts = {}) {
     let path = opts.path || _require('path');
     // assuming it is a DAR if the folder exists and there is a manifest.xml
     return _fileExists(path.join(archiveDir, 'manifest.xml'), opts)
   }
 
-  function _fileExists (archivePath, opts) {
+  function _fileExists(archivePath, opts) {
     let fs = opts.fs || _require('fs');
     return new Promise((resolve, reject) => {
       fs.stat(archivePath, (err, stats) => {
@@ -20037,7 +20076,7 @@
       - `ignoreDotFiles`: ignore dot-files
       - versioning: set to true if versioning should be enabled
   */
-  async function readArchive (archiveDir, opts = {}) {
+  async function readArchive(archiveDir, opts = {}) {
     // make sure that the given path is a dar
     if (await isDocumentArchive(archiveDir, opts)) {
       // first get a list of stats
@@ -20076,7 +20115,7 @@
     }
     ```
   */
-  async function _getFileRecord (fileEntry, opts) {
+  async function _getFileRecord(fileEntry, opts) {
     let fs = opts.fs || _require('fs');
     // for text files load content
     // for binaries use a url
@@ -20114,11 +20153,11 @@
     }
   }
 
-  function _isTextFile (f) {
+  function _isTextFile(f) {
     return new RegExp(`\\.(${TEXTISH.join('|')})$`).exec(f)
   }
 
-  async function writeArchive (archiveDir, rawArchive, opts = {}) {
+  async function writeArchive(archiveDir, rawArchive, opts = {}) {
     const fs = opts.path || _require('fs');
     const path = opts.path || _require('path');
 
@@ -20148,7 +20187,7 @@
     })
   }
 
-  function _writeFile (fs, p, data, encoding) {
+  function _writeFile(fs, p, data, encoding) {
     return new Promise((resolve, reject) => {
       if (typeof data.pipe === 'function') {
         let file = fs.createWriteStream(p);
@@ -20171,7 +20210,7 @@
     fsExtra = _require('fs-extra');
   }
 
-  async function cloneArchive (archiveDir, newArchiveDir, opts = {}) {
+  async function cloneArchive(archiveDir, newArchiveDir, opts = {}) {
     // make sure that the given path is a dar
     if (await isDocumentArchive(archiveDir, opts)) {
       await fsExtra.copy(archiveDir, newArchiveDir);
@@ -20197,11 +20236,11 @@
     folders.
   */
   class FSStorage {
-    constructor (rootDir) {
+    constructor(rootDir) {
       this._rootDir = rootDir;
     }
 
-    read (archiveDir, cb) {
+    read(archiveDir, cb) {
       archiveDir = this._normalizeArchiveDir(archiveDir);
       readArchive(archiveDir, { noBinaryContent: true, ignoreDotFiles: true })
         .then(rawArchive => {
@@ -20219,7 +20258,7 @@
         .catch(cb);
     }
 
-    write (archiveDir, rawArchive, cb) {
+    write(archiveDir, rawArchive, cb) {
       archiveDir = this._normalizeArchiveDir(archiveDir);
       _convertBlobs(rawArchive)
         .then(() => {
@@ -20231,7 +20270,7 @@
         .catch(cb);
     }
 
-    clone (archiveDir, newArchiveDir, cb) {
+    clone(archiveDir, newArchiveDir, cb) {
       archiveDir = this._normalizeArchiveDir(archiveDir);
       newArchiveDir = this._normalizeArchiveDir(newArchiveDir);
       cloneArchive(archiveDir, newArchiveDir)
@@ -20242,7 +20281,7 @@
         .catch(cb);
     }
 
-    _normalizeArchiveDir (archiveDir) {
+    _normalizeArchiveDir(archiveDir) {
       if (this._rootDir) {
         archiveDir = path.join(this._rootDir, archiveDir);
       }
@@ -20253,7 +20292,7 @@
   /*
     Convert all blobs to array buffers
   */
-  async function _convertBlobs (rawArchive) {
+  async function _convertBlobs(rawArchive) {
     let resources = rawArchive.resources;
     let paths = Object.keys(resources);
     for (var i = 0; i < paths.length; i++) {
@@ -20264,7 +20303,7 @@
     }
   }
 
-  function _blobToArrayBuffer (blob) {
+  function _blobToArrayBuffer(blob) {
     return new Promise((resolve, reject) => {
       // TODO: is there other way to get buffer out of Blob without browser APIs?
       fs.readFile(blob.path, (err, buffer) => {
@@ -20308,14 +20347,14 @@
     Status: Phase I
   */
   class DarFileStorage {
-    constructor (rootDir, baseUrl) {
+    constructor(rootDir, baseUrl) {
       this.rootDir = rootDir;
       this.baseUrl = baseUrl;
 
       this._internalStorage = new FSStorage();
     }
 
-    read (darpath, cb) {
+    read(darpath, cb) {
       // console.log('DarFileStorage::read', darpath)
       /*
         - unpack `dar` file as it is into the corresponding folder replacing an existing one
@@ -20331,7 +20370,7 @@
       });
     }
 
-    write (darpath, rawArchive, cb) { // eslint-disble-line
+    write(darpath, rawArchive, cb) { // eslint-disble-line
       let id = this._path2Id(darpath);
       let wcDir = this._getWorkingCopyPath(id);
       this._internalStorage.write(wcDir, rawArchive, err => {
@@ -20340,7 +20379,7 @@
       });
     }
 
-    clone (darpath, newDarpath, cb) { // eslint-disble-line
+    clone(darpath, newDarpath, cb) { // eslint-disble-line
       let id = this._path2Id(darpath);
       let wcDir = this._getWorkingCopyPath(id);
       let newId = this._path2Id(newDarpath);
@@ -20351,7 +20390,7 @@
       });
     }
 
-    _path2Id (darpath) {
+    _path2Id(darpath) {
       darpath = String(darpath);
       darpath = path$1.normalize(darpath);
       // convert: '\\' to '/'
@@ -20369,11 +20408,11 @@
       return dir + name
     }
 
-    _getWorkingCopyPath (id) {
+    _getWorkingCopyPath(id) {
       return path$1.join(this.rootDir, id)
     }
 
-    _unpack (darpath, wcDir, cb) {
+    _unpack(darpath, wcDir, cb) {
       // console.log('DarFileStorage::_unpack', darpath, wcDir)
       yauzl.open(darpath, { lazyEntries: true }, (err, zipfile) => {
         if (err) cb(err);
@@ -20382,7 +20421,7 @@
           // dir entry
           if (/\/$/.test(entry.fileName)) {
             zipfile.readEntry();
-          // file entry
+            // file entry
           } else {
             // console.log('... unpacking', entry.fileName)
             zipfile.openReadStream(entry, (err, readStream) => {
@@ -20405,7 +20444,7 @@
       });
     }
 
-    _pack (wcDir, darpath, cb) {
+    _pack(wcDir, darpath, cb) {
       // console.log('DarFileStorage::_pack')
       let zipfile = new yazl.ZipFile();
       listDir(wcDir).then(entries => {
@@ -20423,7 +20462,7 @@
     }
 
     // used by tests
-    _getRawArchive (darpath, cb) {
+    _getRawArchive(darpath, cb) {
       let id = this._path2Id(darpath);
       let wcDir = this._getWorkingCopyPath(id);
       this._internalStorage.read(wcDir, cb);
@@ -20433,14 +20472,14 @@
   /* global FormData */
 
   class HttpStorageClient {
-    constructor (apiUrl) {
+    constructor(apiUrl) {
       this.apiUrl = apiUrl;
     }
 
     /*
       @returns a Promise for a raw archive, i.e. the data for a DocumentArchive.
     */
-    read (archiveId, cb) {
+    read(archiveId, cb) {
       let url = this.apiUrl;
       if (archiveId) {
         url = url + '/' + archiveId;
@@ -20455,7 +20494,7 @@
       })
     }
 
-    write (archiveId, data, cb) {
+    write(archiveId, data, cb) {
       let form = new FormData();
       substance.forEach(data.resources, (record, filePath) => {
         if (record.encoding === 'blob') {
@@ -20482,34 +20521,34 @@
   }
 
   class ManifestDocument extends substance.Document {
-    constructor () {
+    constructor() {
       super(DARSchema);
     }
 
-    getDocumentNodes () {
+    getDocumentNodes() {
       return this.get('dar').resolve('documents')
     }
 
-    getAssetNodes () {
+    getAssetNodes() {
       return this.get('dar').resolve('assets')
     }
 
-    getAssetByPath (path) {
+    getAssetByPath(path) {
       return this.getAssetNodes().find(asset => asset.path === path)
     }
 
-    getDocumentEntries () {
+    getDocumentEntries() {
       return this.getDocumentNodes().map(_getEntryFromDocumentNode)
     }
 
-    getDocumentEntry (id) {
+    getDocumentEntry(id) {
       let entryNode = this.get(id);
       if (entryNode && entryNode.type === 'document') {
         return _getEntryFromDocumentNode(entryNode)
       }
     }
 
-    static createEmptyManifest () {
+    static createEmptyManifest() {
       let doc = new ManifestDocument();
       substance.documentHelpers.createNodeFromJson(doc, {
         type: 'dar',
@@ -20520,7 +20559,7 @@
       return doc
     }
 
-    static fromXML (xmlStr) {
+    static fromXML(xmlStr) {
       let xmlDom = substance.DefaultDOMElement.parseXML(xmlStr);
 
       let manifest = ManifestDocument.createEmptyManifest();
@@ -20549,7 +20588,7 @@
       return manifest
     }
 
-    toXML () {
+    toXML() {
       let dar = this.get('dar');
       let xmlDom = substance.DefaultDOMElement.createDocument('xml');
       let $$ = xmlDom.createElement.bind(xmlDom);
@@ -20581,7 +20620,7 @@
     }
   }
 
-  function _getEntryFromDocumentNode (documentNode) {
+  function _getEntryFromDocumentNode(documentNode) {
     return {
       id: documentNode.id,
       path: documentNode.path,
@@ -20590,14 +20629,14 @@
     }
   }
 
-  class DAR extends substance.DocumentNode {}
+  class DAR extends substance.DocumentNode { }
   DAR.schema = {
     type: 'dar',
     documents: substance.CHILDREN('document'),
     assets: substance.CHILDREN('asset')
   };
 
-  class DARDocument extends substance.DocumentNode {}
+  class DARDocument extends substance.DocumentNode { }
   DARDocument.schema = {
     type: 'document',
     name: substance.STRING,
@@ -20605,7 +20644,7 @@
     path: substance.STRING
   };
 
-  class DARAsset extends substance.DocumentNode {}
+  class DARAsset extends substance.DocumentNode { }
   DARAsset.schema = {
     type: 'asset',
     name: substance.STRING,
@@ -20619,20 +20658,20 @@
   });
 
   var ManifestLoader = {
-    load (manifestXml) {
+    load(manifestXml) {
       return ManifestDocument.fromXML(manifestXml)
     }
   };
 
   class InMemoryDarBuffer {
-    constructor () {
+    constructor() {
       this._version = null;
       this._changes = [];
       this._isDirty = {};
       this._blobs = {};
     }
 
-    getVersion () {
+    getVersion() {
       return this._version
     }
 
@@ -20640,7 +20679,7 @@
       cb();
     }
 
-    addChange (docId, change) {
+    addChange(docId, change) {
       // HACK: if there are no ops we skip
       if (change.ops.length === 0) return
       // console.log('RECORD CHANGE', docId, change)
@@ -20650,32 +20689,32 @@
       });
     }
 
-    hasPendingChanges () {
+    hasPendingChanges() {
       return this._changes.length > 0
     }
 
-    getChanges () {
+    getChanges() {
       return this._changes.slice()
     }
 
-    hasResourceChanged (docId) {
+    hasResourceChanged(docId) {
       return this._isDirty[docId]
     }
 
-    hasBlobChanged (assetId) {
+    hasBlobChanged(assetId) {
       return Boolean(this._isDirty[assetId])
     }
 
-    addBlob (assetId, blob) {
+    addBlob(assetId, blob) {
       this._isDirty[assetId] = true;
       this._blobs[assetId] = blob;
     }
 
-    getBlob (assetId) {
+    getBlob(assetId) {
       return this._blobs[assetId]
     }
 
-    reset (version) {
+    reset(version) {
       this._version = version;
       this._changes = [];
       this._blobs = {};
@@ -20701,7 +20740,7 @@
     and eventually saving a new version of the ardhive.
   */
   class PersistedDocumentArchive extends substance.EventEmitter {
-    constructor (storage, buffer, context, config) {
+    constructor(storage, buffer, context, config) {
       super();
       this.storage = storage;
       this.buffer = buffer;
@@ -20713,7 +20752,7 @@
       this._config = config;
     }
 
-    addDocument (type, name, xml) {
+    addDocument(type, name, xml) {
       let documentId = substance.uuid();
       let documents = this._documents;
       let document = this._loadDocument(type, { data: xml }, documents);
@@ -20723,7 +20762,7 @@
       return documentId
     }
 
-    addAsset (file) {
+    addAsset(file) {
       let assetId = substance.uuid();
       let [name, ext] = _getNameAndExtension(file.name);
       let filePath = this._getUniqueFileName(name, ext);
@@ -20759,15 +20798,15 @@
       return filePath
     }
 
-    getAsset (fileName) {
+    getAsset(fileName) {
       return this._documents['manifest'].getAssetByPath(fileName)
     }
 
-    getAssetEntries () {
+    getAssetEntries() {
       return this._documents['manifest'].getAssetNodes().map(node => node.toJSON())
     }
 
-    getBlob (path) {
+    getBlob(path) {
       // There are the following cases
       // 1. the asset is on a different server (remote url)
       // 2. the asset is on the local server (local url / relative path)
@@ -20805,11 +20844,11 @@
       }
     }
 
-    getDocumentEntries () {
+    getDocumentEntries() {
       return this.getDocument('manifest').getDocumentEntries()
     }
 
-    getDownloadLink (fileName) {
+    getDownloadLink(fileName) {
       let manifest = this.getDocument('manifest');
       let asset = manifest.getAssetByPath(fileName);
       if (asset) {
@@ -20817,20 +20856,20 @@
       }
     }
 
-    getDocument (docId) {
+    getDocument(docId) {
       return this._documents[docId]
     }
 
-    hasAsset (fileName) {
+    hasAsset(fileName) {
       // TODO: at some point I want to introduce an index for files by fileName/path
       return Boolean(this.getAsset(fileName))
     }
 
-    hasPendingChanges () {
+    hasPendingChanges() {
       return this.buffer.hasPendingChanges()
     }
 
-    load (archiveId, cb) {
+    load(archiveId, cb) {
       const storage = this.storage;
       const buffer = this.buffer;
       storage.read(archiveId, (err, upstreamArchive) => {
@@ -20860,7 +20899,7 @@
             throw new Error('There must be a manifest.')
           }
           // apply pending changes
-          if (!buffer.hasPendingChanges()) ; else {
+          if (!buffer.hasPendingChanges()); else {
             buffer.reset(upstreamArchive.version);
           }
           // register for any changes in each document
@@ -20875,7 +20914,7 @@
       });
     }
 
-    removeDocument (documentId) {
+    removeDocument(documentId) {
       let document = this._documents[documentId];
       if (document) {
         this._unregisterFromDocument(document);
@@ -20886,14 +20925,14 @@
       }
     }
 
-    renameDocument (documentId, name) {
+    renameDocument(documentId, name) {
       // TODO: this is not ready for collab
       let manifest = this._documents['manifest'];
       let documentNode = manifest.get(documentId);
       documentNode.name = name;
     }
 
-    resolveUrl (path) {
+    resolveUrl(path) {
       // until saved, files have a blob URL
       let blobEntry = this._pendingFiles.get(path);
       if (blobEntry) {
@@ -20906,7 +20945,7 @@
       }
     }
 
-    save (cb) {
+    save(cb) {
       // FIXME: buffer.hasPendingChanges() is not working
       this.buffer._isDirty['manuscript'] = true;
       this._save(this._archiveId, cb);
@@ -20919,7 +20958,7 @@
       2. save: perform a regular save using user buffer (over new archive, including pending
          documents and blobs)
     */
-    saveAs (newArchiveId, cb) {
+    saveAs(newArchiveId, cb) {
       this.storage.clone(this._archiveId, newArchiveId, (err) => {
         if (err) return cb(err)
         this._save(newArchiveId, cb);
@@ -20929,7 +20968,7 @@
     /*
       Adds a document record to the manifest file
     */
-    _addDocumentRecord (documentId, type, name, path) {
+    _addDocumentRecord(documentId, type, name, path) {
       // TODO: this is not collab ready
       let manifest = this._documents['manifest'];
       let documentNode = manifest.create({
@@ -20942,7 +20981,7 @@
       substance.documentHelpers.append(manifest, ['dar', 'documents', documentNode.id]);
     }
 
-    _getUniqueFileName (name, ext) {
+    _getUniqueFileName(name, ext) {
       let candidate;
       // first try the canonical one
       candidate = `${name}.${ext}`;
@@ -20958,20 +20997,20 @@
       return candidate
     }
 
-    _loadManifest (record) {
+    _loadManifest(record) {
       if (!record) {
         throw new Error('manifest.xml is missing')
       }
       return ManifestLoader.load(record.data)
     }
 
-    _registerForAllChanges (documents) {
+    _registerForAllChanges(documents) {
       substance.forEach(documents, (document, docId) => {
         this._registerForChanges(document, docId);
       });
     }
 
-    _registerForChanges (document, docId) {
+    _registerForChanges(document, docId) {
       document.on('document:changed', change => {
         this.buffer.addChange(docId, change);
         // Apps can subscribe to this (e.g. to show there's pending changes)
@@ -20979,14 +21018,14 @@
       }, this);
     }
 
-    _repair () {
+    _repair() {
       // no-op
     }
 
     /*
       Create a raw archive for upload from the changed resources.
     */
-    _save (archiveId, cb) {
+    _save(archiveId, cb) {
       const buffer = this.buffer;
       const storage = this.storage;
 
@@ -21030,7 +21069,7 @@
       });
     }
 
-    _unregisterFromDocument (document) {
+    _unregisterFromDocument(document) {
       document.off(this);
     }
 
@@ -21038,7 +21077,7 @@
       Uses the current state of the buffer to generate a rawArchive object
       containing all changed documents
     */
-    _exportChanges (documents, buffer) {
+    _exportChanges(documents, buffer) {
       let rawArchive = {
         version: buffer.getVersion(),
         diff: buffer.getChanges(),
@@ -21050,7 +21089,7 @@
       return rawArchive
     }
 
-    _exportManifest (documents, buffer, rawArchive) {
+    _exportManifest(documents, buffer, rawArchive) {
       let manifest = documents['manifest'];
       if (buffer.hasResourceChanged('manifest')) {
         let manifestDom = manifest.toXML();
@@ -21065,11 +21104,11 @@
     }
 
     // TODO: generalize the implementation so that it can live here
-    _exportChangedDocuments (documents, buffer, rawArchive) {
+    _exportChangedDocuments(documents, buffer, rawArchive) {
       throwMethodIsAbstract();
     }
 
-    _exportChangedAssets (documents, buffer, rawArchive) {
+    _exportChangedAssets(documents, buffer, rawArchive) {
       let manifest = documents['manifest'];
       let assetNodes = manifest.getAssetNodes();
       assetNodes.forEach(asset => {
@@ -21089,7 +21128,7 @@
     }
   }
 
-  function _getNameAndExtension (name) {
+  function _getNameAndExtension(name) {
     let frags = name.split('.');
     let ext = '';
     if (frags.length > 1) {
@@ -21103,17 +21142,17 @@
    * A storage implementation that is bound to a single folder.
    */
   class UnpackedDarFolderStorage extends FSStorage {
-    constructor (darFolder) {
+    constructor(darFolder) {
       super();
 
       this.darFolder = darFolder;
     }
 
-    _normalizeArchiveDir () {
+    _normalizeArchiveDir() {
       return this.darFolder
     }
 
-    clone (archiveDir, newArchiveDir, cb) {
+    clone(archiveDir, newArchiveDir, cb) {
       cb(new Error('Cloning is not supported by this storage type.'));
     }
   }
@@ -21121,15 +21160,15 @@
   const SLASH = '/'.charCodeAt(0);
 
   class Vfs {
-    constructor (data) {
+    constructor(data) {
       this._data = data;
     }
 
-    existsSync (path) {
+    existsSync(path) {
       return this._data.hasOwnProperty(path)
     }
 
-    readFileSync (path) {
+    readFileSync(path) {
       if (path.charCodeAt(0) === SLASH) {
         path = path.slice(1);
       }
@@ -21139,7 +21178,7 @@
       return this._data[path]
     }
 
-    writeFileSync (path, content) {
+    writeFileSync(path, content) {
       if (path.charCodeAt(0) === SLASH) {
         path = path.slice(1);
       }
@@ -21148,7 +21187,7 @@
   }
 
   class VfsStorageClient {
-    constructor (vfs, baseUrl, options = {}) {
+    constructor(vfs, baseUrl, options = {}) {
       this.vfs = vfs;
 
       // an url rom where the assets are served statically
@@ -21156,12 +21195,12 @@
       this.options = options;
     }
 
-    read (archiveId, cb) {
+    read(archiveId, cb) {
       let rawArchive = _readRawArchive(this.vfs, archiveId, this.baseUrl);
       cb(null, rawArchive);
     }
 
-    write (archiveId, data, cb) { // eslint-disable-line
+    write(archiveId, data, cb) { // eslint-disable-line
       if (this.options.writable) {
         _updateRawArchive(this.vfs, archiveId, data, this.baseUrl);
       }
@@ -21169,7 +21208,7 @@
     }
   }
 
-  function _readRawArchive (fs, archiveId, baseUrl = '') {
+  function _readRawArchive(fs, archiveId, baseUrl = '') {
     let manifestXML = fs.readFileSync(`${archiveId}/manifest.xml`);
     let manifest = ManifestLoader.load(manifestXML);
     let docs = manifest.getDocumentNodes();
@@ -21207,7 +21246,7 @@
     return rawArchive
   }
 
-  function _updateRawArchive (fs, archiveId, rawArchive, baseUrl = '') {
+  function _updateRawArchive(fs, archiveId, rawArchive, baseUrl = '') {
     let paths = Object.keys(rawArchive.resources);
     for (let path of paths) {
       let resource = rawArchive.resources[path];
@@ -21216,7 +21255,7 @@
     }
   }
 
-  function createDemoVfs () {
+  function createDemoVfs() {
     let dom = substance.DefaultDOMElement.parseXML(EMPTY_JATS);
     // add an empty paragraph into the empty body
     let $$ = dom.createElement.bind(dom);
@@ -21232,7 +21271,7 @@
     return new Vfs(data)
   }
 
-  function updateEntityChildArray (tx, nodeId, tagName, attribute, oldEntityIds, newEntityIds) {
+  function updateEntityChildArray(tx, nodeId, tagName, attribute, oldEntityIds, newEntityIds) {
     let node = tx.get(nodeId);
     let addedEntityIds = substance.without(newEntityIds, ...oldEntityIds);
     let removedEntityIds = substance.without(oldEntityIds, ...newEntityIds);
@@ -21278,7 +21317,7 @@
     tx.setSelection(null);
   }
 
-  function checkLoadArchive (ArchiveClass, rawArchive) {
+  function checkLoadArchive(ArchiveClass, rawArchive) {
     let testArchive = new ArchiveClass();
     try {
       testArchive._ingest(rawArchive);
@@ -21290,7 +21329,7 @@
 
   /* istanbul ignore file */
 
-  function vfsSaveHook (storage, ArchiveClass) {
+  function vfsSaveHook(storage, ArchiveClass) {
     // monkey patch VfsStorageClient so that we can check if the stored data
     // can be loaded
     storage.write = (archiveId, rawArchive, cb) => {
@@ -21315,13 +21354,13 @@
 
   // TODO: this should incoporate the 'Project' stuff that we have in Stencila
   class Texture extends substance.Component {
-    getInitialState () {
+    getInitialState() {
       return {
         currentDocumentName: 'manuscript'
       }
     }
 
-    render ($$) {
+    render($$) {
       const config = this.props.config;
       const archive = this.props.archive;
       let el = $$('div').addClass('sc-texture');
@@ -21347,7 +21386,7 @@
       return el
     }
 
-    static registerPlugin (plugin) {
+    static registerPlugin(plugin) {
       let plugins = Texture.plugins;
       if (!plugins) {
         Texture.plugins = plugins = new Map();
@@ -21359,7 +21398,7 @@
       plugins.set(name, plugin);
     }
 
-    static getConfiguration () {
+    static getConfiguration() {
       let plugins = Texture.plugins;
       let config = new TextureConfigurator();
       for (let plugin of plugins.values()) {
@@ -21369,7 +21408,7 @@
       return config
     }
 
-    _handleKeydown (event) {
+    _handleKeydown(event) {
       this.refs.resource._handleKeydown(event);
     }
   }
@@ -21378,7 +21417,7 @@
   Texture.registerPlugin(ArticlePackage);
 
   class TextureAppChrome extends substance.Component {
-    constructor (...args) {
+    constructor(...args) {
       super(...args);
 
       if (this.props.enableRouting) {
@@ -21389,18 +21428,18 @@
       this._config = Texture.getConfiguration();
     }
 
-    getChildContext () {
+    getChildContext() {
       return this._childContext || {}
     }
 
-    getInitialState () {
+    getInitialState() {
       return {
         archive: undefined,
         error: undefined
       }
     }
 
-    didMount () {
+    didMount() {
       this._init(err => {
         // if debug is turned on do not 'forward' to an error display and instead
         // leave the app in its failed state
@@ -21426,19 +21465,19 @@
       });
     }
 
-    dispose () {
+    dispose() {
       substance.DefaultDOMElement.getBrowserWindow().off(this);
     }
 
-    _getBuffer () {
+    _getBuffer() {
       throwMethodIsAbstract();
     }
 
-    _getStorage () {
+    _getStorage() {
       throwMethodIsAbstract();
     }
 
-    _loadArchive (archiveId, context, cb) {
+    _loadArchive(archiveId, context, cb) {
       const ArchiveClass = this._getArchiveClass();
       let storage = this._getStorage();
       let buffer = this._getBuffer();
@@ -21469,7 +21508,7 @@
       }
     }
 
-    _init (cb) {
+    _init(cb) {
       if (!cb) cb = (err) => { if (err) throw err };
       this._setupChildContext((err, context) => {
         if (err) return cb(err)
@@ -21489,34 +21528,34 @@
       });
     }
 
-    _setupChildContext (cb) {
+    _setupChildContext(cb) {
       cb(null, { router: this._router });
     }
 
-    _initContext (context, cb) {
+    _initContext(context, cb) {
       cb(null, context);
     }
 
-    _initArchive (archive, context, cb) {
+    _initArchive(archive, context, cb) {
       cb(null, archive);
     }
 
-    _afterInit () {
+    _afterInit() {
       // Update window title after archive loading to display title
       this._updateTitle();
     }
 
-    _archiveChanged () {
+    _archiveChanged() {
       this._updateTitle();
     }
 
-    _handleSave () {
+    _handleSave() {
       this._save((err) => {
         if (err) console.error(err);
       });
     }
 
-    _save (cb) {
+    _save(cb) {
       this.state.archive.save((err, update) => {
         if (err) return cb(err)
         this._updateTitle();
@@ -21524,9 +21563,9 @@
       });
     }
 
-    _updateTitle () {}
+    _updateTitle() { }
 
-    _keyDown (event) {
+    _keyDown(event) {
       // TODO: should this really be suppressed here?
       if (event.key === 'Dead') return
       if (this._handleKeydown) {
@@ -21534,7 +21573,7 @@
       }
     }
 
-    _handleKeydown (event) {
+    _handleKeydown(event) {
       let handled = false;
       handled = this.refs.texture._handleKeydown(event);
       if (handled) {
@@ -21549,7 +21588,7 @@
       Creates EditorSessions from a raw archive.
       This might involve some consolidation and ingestion.
     */
-    _ingest (rawArchive) {
+    _ingest(rawArchive) {
       let documents = {};
       let manifestXML = _importManifest(rawArchive);
       let manifest = this._loadManifest({ data: manifestXML });
@@ -21572,7 +21611,7 @@
     }
 
     // TODO: this should be generalized and then live in the base class
-    _exportChangedDocuments (documents, buffer, rawArchive) {
+    _exportChangedDocuments(documents, buffer, rawArchive) {
       // Note: we are only adding resources that have changed
       // and only those which are registered in the manifest
       let entries = this.getDocumentEntries();
@@ -21609,7 +21648,7 @@
       }
     }
 
-    _exportDocument (type, document, documents) { // eslint-disable-line no-unused-vars
+    _exportDocument(type, document, documents) { // eslint-disable-line no-unused-vars
       let serializer = this._config.getDocumentSerializer(type);
       if (serializer) {
         return serializer.export(document, this._config)
@@ -21619,7 +21658,7 @@
       }
     }
 
-    getTitle () {
+    getTitle() {
       // TODO: the name of the 'main' document should not be hard-coded
       let mainDocument = this.getDocument('manuscript');
       let title = 'Untitled';
@@ -21637,15 +21676,15 @@
     Create an explicit entry for pub-meta.json, which does not
     exist in the serialisation format
   */
-  function _importManifest (rawArchive) {
+  function _importManifest(rawArchive) {
     let manifestXML = rawArchive.resources['manifest.xml'].data;
     let dom = substance.DefaultDOMElement.parseXML(manifestXML);
     return dom.serialize()
   }
 
-  function TextureAppMixin (ParentAppChrome) {
+  function TextureAppMixin(ParentAppChrome) {
     return class TextureApp extends ParentAppChrome {
-      render ($$) {
+      render($$) {
         let el = $$('div').addClass('sc-app');
         let { archive, error } = this.state;
         if (archive) {
@@ -21667,28 +21706,28 @@
         return el
       }
 
-      _getAppClass () {
+      _getAppClass() {
         return Texture
       }
 
-      _getArchiveClass () {
+      _getArchiveClass() {
         return TextureArchive
       }
     }
   }
 
   class TextureDesktopAppChrome extends TextureAppChrome {
-    didMount () {
+    didMount() {
       super.didMount();
 
       substance.DefaultDOMElement.getBrowserWindow().on('click', this._click, this);
     }
 
-    _getBuffer () {
+    _getBuffer() {
       return new InMemoryDarBuffer()
     }
 
-    _getStorage () {
+    _getStorage() {
       // Note: in the Desktop app, the storage is maintained by the main process
       // and passed as a prop directly. In contrast to the web-version
       // there is no control via HTTP param possible
@@ -21697,11 +21736,11 @@
 
     // emit an event on this component. The Electron binding in app.js listens to it and
     // handles it
-    _handleSave () {
+    _handleSave() {
       this.emit('save');
     }
 
-    _saveAs (newDarPath, cb) {
+    _saveAs(newDarPath, cb) {
       console.info('saving as', newDarPath);
       let archive = this.state.archive;
       archive.saveAs(newDarPath, err => {
@@ -21723,7 +21762,7 @@
       });
     }
 
-    _updateTitle () {
+    _updateTitle() {
       const archive = this.state.archive;
       if (!archive) return
       let newTitle = archive.getTitle();
@@ -21733,7 +21772,7 @@
       document.title = newTitle;
     }
 
-    _click (event) {
+    _click(event) {
       const target = substance.DefaultDOMElement.wrapNativeElement(event.target);
       let url = target.getAttribute('href');
       if (target.is('a') && url !== '#') {
@@ -21743,14 +21782,14 @@
     }
   }
 
-  class TextureDesktopApp extends TextureAppMixin(TextureDesktopAppChrome) {}
+  class TextureDesktopApp extends TextureAppMixin(TextureDesktopAppChrome) { }
 
   class TextureWebAppChrome extends TextureAppChrome {
-    _getBuffer () {
+    _getBuffer() {
       return new InMemoryDarBuffer()
     }
 
-    _getStorage () {
+    _getStorage() {
       let storageType = this.props.storageType;
       if (storageType === 'vfs') {
         let vfs = this.props.vfs;
@@ -21766,7 +21805,7 @@
     // TODO: try to share implementation with TextureDesktopAppChrome
     // move as much as possible into TextureAppChrome
     // and only add browser specific overrides here
-    _handleKeydown (event) {
+    _handleKeydown(event) {
       let key = substance.parseKeyEvent(event);
       // console.log('Texture received keydown for combo', key)
       let handled = false;
@@ -21788,7 +21827,7 @@
   }
 
   class TextureWebApp extends TextureAppMixin(TextureWebAppChrome) {
-    _getDefaultDataFolder () {
+    _getDefaultDataFolder() {
       return Texture.defaultDataFolder || './data/'
     }
   }
