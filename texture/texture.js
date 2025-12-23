@@ -3329,6 +3329,8 @@
     title: substance.STRING, // <article-title>
     authors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="author">
     editors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="editor">
+    translators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="translator">
+    compilers: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="compiler">
     containerTitle: substance.STRING, // <source>
     year: substance.STRING, // <year>
     month: substance.STRING, // <month>
@@ -3416,6 +3418,7 @@
     editors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="editor">
     translators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="translator">
     compilers: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="compiler">
+    illustrators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="illustrator">
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <source>
     volume: substance.STRING, // <volume>
     edition: substance.STRING, // <editor>
@@ -3472,6 +3475,7 @@
     editors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="editor">
     translators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="translator">
     compilers: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="compiler">
+    illustrators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="illustrator">
     edition: substance.STRING, // <edition>
     publisherLoc: substance.STRING, // <publisher-loc>
     publisherName: substance.STRING, // <publisher-name>
@@ -3507,6 +3511,9 @@
     type: 'conference-paper-ref', // publication-type="confproc"
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <article-title>
     authors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="author">
+    editors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="editor">
+    translators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="translator">
+    compilers: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="compiler">
     confName: substance.STRING, // <conf-name>
     confLoc: substance.STRING, // <conf-loc>
     containerTitle: substance.STRING, // <source>
@@ -3581,6 +3588,10 @@
     type: 'data-publication-ref', // publication-type="data"
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <data-title>
     authors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="author">
+    translators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="translator">
+    compilers: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="compiler">
+    curators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="curator">
+    sponsors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="sponsor">
     containerTitle: substance.STRING, // <source>
     year: substance.STRING, // <year>
     month: substance.STRING, // <month>
@@ -3876,6 +3887,9 @@
     authors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="author">
     editors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="editor">
     compilers: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="compiler">
+    translators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="translator">
+    curators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="curator">
+    sponsors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="sponsor">
     containerTitle: substance.STRING, // <source>: label this 'Journal' or 'Publication' as in Zotero?
     volume: substance.STRING, // <volume>
     issue: substance.STRING, // <issue>
@@ -4044,6 +4058,9 @@
     type: 'magazine-article-ref',
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <article-title>
     authors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="author">
+    editors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="editor">
+    translators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="translator">
+    illustrators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="illustrator">
     containerTitle: substance.STRING, // <source>
     year: substance.STRING, // <year>
     month: substance.STRING, // <month>
@@ -4110,6 +4127,8 @@
     type: 'newspaper-article-ref', // publication-type="newspaper"
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <article-title>
     authors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="author">
+    editors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="editor">
+    translators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="translator">
     containerTitle: substance.STRING, // <source>
     year: substance.STRING, // <year>
     month: substance.STRING, // <month>
@@ -4148,7 +4167,8 @@
   PatentRef.schema = {
     type: 'patent-ref', // publication-type="patent"
     inventors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="inventor">
-    assignee: substance.STRING, // <collab collab-type="assignee"><named-content>
+    translators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="translator">
+    assignees: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="assignee">
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <article-title>
     containerTitle: substance.STRING, // <source>
     year: substance.STRING, // <year>
@@ -4273,6 +4293,9 @@
   ReportRef.schema = {
     type: 'report-ref', // publication-type="report"
     authors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="author">
+    editors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="editor">
+    translators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="translator">
+    compilers: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="compiler">
     sponsors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="sponsor">
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <source>
     year: substance.STRING, // <year>
@@ -4316,6 +4339,9 @@
     type: 'software-ref', // publication-type="software"
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <source>
     authors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="author">
+    editors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="editor">
+    translators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="translator">
+    compilers: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="compiler">
     version: substance.STRING, // <version>
     publisherLoc: substance.STRING, // <publisher-loc>
     publisherName: substance.STRING, // <publisher-name>
@@ -4447,6 +4473,9 @@
     type: 'thesis-ref', // publication-type="thesis"
     title: substance.TEXT(...RICH_TEXT_ANNOS), // <article-title>
     authors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="author">
+    editors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="editor">
+    translators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="translator">
+    advisors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="advisor">
     year: substance.STRING, // <year>
     month: substance.STRING, // <month>
     day: substance.STRING, // <day>
@@ -4496,6 +4525,10 @@
     // E.g. website name, where the page appeared
     containerTitle: substance.STRING, // <source>
     authors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="author">
+    editors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="editor">
+    translators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="translator">
+    compilers: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="compiler">
+    curators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="curator">
     year: substance.STRING, // <year>
     month: substance.STRING, // <month>
     day: substance.STRING, // <day>
@@ -4991,6 +5024,36 @@
         ').'
       );
     }
+    if (entity.translators && entity.translators.length > 0) {
+      let translatorLabel = entity.translators.length > 1 ? 'trans' : 'trans';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.translators, entityDb),
+        ' (',
+        translatorLabel,
+        ').',
+      );
+    }
+    if (entity.curators && entity.curators.length > 0) {
+      let curatorLabel = entity.curators.length > 1 ? 'curators' : 'curator';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.curators, entityDb),
+        ' (',
+        curatorLabel,
+        ').',
+      );
+    }
+    if (entity.sponsors && entity.sponsors.length > 0) {
+      let sponsorLabel = entity.sponsors.length > 1 ? 'sponsors' : 'sponsor';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.sponsors, entityDb),
+        ' (',
+        sponsorLabel,
+        ').',
+      );
+    }
     if (entity.containerTitle) {
       fragments.push(
         ' ',
@@ -5063,6 +5126,16 @@
         _renderAuthors($$, entity.compilers, entityDb),
         ', ',
         compilerLabel,
+        ').'
+      );
+    }
+    if (entity.illustrators && entity.illustrators.length) {
+      let illustratorLabel = entity.illustrators.length > 1 ? 'illustrators' : 'illustrator';
+      fragments = fragments.concat(
+        ' (',
+        _renderAuthors($$, entity.illustrators, entityDb),
+        ', ',
+        illustratorLabel,
         ').'
       );
     }
@@ -5149,6 +5222,16 @@
         ').'
       );
     }
+    if (entity.illustrators && entity.illustrators.length) {
+      let illustratorLabel = entity.illustrators.length > 1 ? 'illustrators' : 'illustrator';
+      fragments = fragments.concat(
+        ' (',
+        _renderAuthors($$, entity.illustrators, entityDb),
+        ', ',
+        illustratorLabel,
+        ').'
+      );
+    }
     if (entity.title) {
       fragments.push(
         ' ',
@@ -5226,6 +5309,13 @@
         '.'
       );
     }
+    if (entity.translators && entity.translators.length > 0) {
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.translators, entityDb),
+        ' (trans).'
+      );
+    }
     if (entity.title) {
       fragments.push(
         ' ',
@@ -5234,8 +5324,15 @@
       );
     }
 
-    if (entity.assignee) {
-      fragments.push(' ', entity.assignee, ',');
+    if (entity.assignees && entity.assignees.length > 0) {
+      let assigneeLabel = entity.assignees.length > 1 ? 'assignees' : 'assignee';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.assignees, entityDb),
+        ' (',
+        assigneeLabel,
+        ').'
+      );
     }
     let date = _renderDate($$, entity.year, entity.month, entity.day, 'short');
     if (date) {
@@ -5276,6 +5373,23 @@
         '.'
       );
     }
+    if (entity.translators && entity.translators.length > 0) {
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.translators, entityDb),
+        ' (trans).'
+      );
+    }
+    if (entity.compilers && entity.compilers.length > 0) {
+      let compilerLabel = entity.compilers.length > 1 ? 'comps' : 'comp';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.compilers, entityDb),
+        ' (',
+        compilerLabel,
+        ').'
+      );
+    }
     if (entity.containerTitle) {
       fragments.push(
         ' ',
@@ -5314,6 +5428,43 @@
       fragments = fragments.concat(
         _renderAuthors($$, entity.authors, entityDb),
         '.'
+      );
+    }
+    if (entity.translators && entity.translators.length > 0) {
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.translators, entityDb),
+        ' (trans).'
+      );
+    }
+    if (entity.compilers && entity.compilers.length > 0) {
+      let compilerLabel = entity.compilers.length > 1 ? 'comps' : 'comp';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.compilers, entityDb),
+        ' (',
+        compilerLabel,
+        ').'
+      );
+    }
+    if (entity.curators && entity.curators.length > 0) {
+      let curatorLabel = entity.curators.length > 1 ? 'curators' : 'curator';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.curators, entityDb),
+        ' (',
+        curatorLabel,
+        ').'
+      );
+    }
+    if (entity.sponsors && entity.sponsors.length > 0) {
+      let sponsorLabel = entity.sponsors.length > 1 ? 'sponsors' : 'sponsor';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.sponsors, entityDb),
+        ' (',
+        sponsorLabel,
+        ').'
       );
     }
     if (entity.title) {
@@ -5366,6 +5517,33 @@
         '.'
       );
     }
+    if (entity.editors && entity.editors.length > 0) {
+      let editorLabel = entity.editors.length > 1 ? 'eds' : 'ed';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.editors, entityDb),
+        ' (',
+        editorLabel,
+        ').'
+      );
+    }
+    if (entity.translators && entity.translators.length > 0) {
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.translators, entityDb),
+        ' (trans).'
+      );
+    }
+    if (entity.illustrators && entity.illustrators.length > 0) {
+      let illustratorLabel = entity.illustrators.length > 1 ? 'illustrators' : 'illustrator';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.illustrators, entityDb),
+        ' (',
+        illustratorLabel,
+        ').'
+      );
+    }
     if (entity.title) {
       fragments.push(
         ' ',
@@ -5414,6 +5592,23 @@
       fragments = fragments.concat(
         _renderAuthors($$, entity.authors, entityDb),
         '.'
+      );
+    }
+    if (entity.editors && entity.editors.length > 0) {
+      let editorLabel = entity.editors.length > 1 ? 'eds' : 'ed';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.editors, entityDb),
+        ' (',
+        editorLabel,
+        ').'
+      );
+    }
+    if (entity.translators && entity.translators.length > 0) {
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.translators, entityDb),
+        ' (trans).'
       );
     }
     if (entity.title) {
@@ -5475,6 +5670,33 @@
       );
     }
 
+    if (entity.editors && entity.editors.length > 0) {
+      let editorLabel = entity.editors.length > 1 ? 'eds' : 'ed';
+      fragments = fragments.concat(
+        _renderAuthors($$, entity.editors, entityDb),
+        ' (',
+        editorLabel,
+        '). '
+      );
+    }
+
+    if (entity.translators && entity.translators.length > 0) {
+      fragments = fragments.concat(
+        _renderAuthors($$, entity.translators, entityDb),
+        ' (trans). '
+      );
+    }
+
+    if (entity.compilers && entity.compilers.length > 0) {
+      let compilerLabel = entity.compilers.length > 1 ? 'comps' : 'comp';
+      fragments = fragments.concat(
+        _renderAuthors($$, entity.compilers, entityDb),
+        ' (',
+        compilerLabel,
+        '). '
+      );
+    }
+
     if (entity.sponsors.length > 0) {
       fragments = fragments.concat(
         _renderAuthors($$, entity.sponsors, entityDb),
@@ -5521,6 +5743,33 @@
       fragments = fragments.concat(
         _renderAuthors($$, entity.authors, entityDb),
         '.'
+      );
+    }
+    if (entity.editors && entity.editors.length > 0) {
+      let editorLabel = entity.editors.length > 1 ? 'eds' : 'ed';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.editors, entityDb),
+        ' (',
+        editorLabel,
+        ').'
+      );
+    }
+    if (entity.translators && entity.translators.length > 0) {
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.translators, entityDb),
+        ' (trans).'
+      );
+    }
+    if (entity.compilers && entity.compilers.length > 0) {
+      let compilerLabel = entity.compilers.length > 1 ? 'comps' : 'comp';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.compilers, entityDb),
+        ' (',
+        compilerLabel,
+        ').'
       );
     }
     if (entity.title) {
@@ -5577,6 +5826,33 @@
         '.'
       );
     }
+    if (entity.editors && entity.editors.length > 0) {
+      let editorLabel = entity.editors.length > 1 ? 'eds' : 'ed';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.editors, entityDb),
+        ' (',
+        editorLabel,
+        ').'
+      );
+    }
+    if (entity.translators && entity.translators.length > 0) {
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.translators, entityDb),
+        ' (trans).'
+      );
+    }
+    if (entity.compilers && entity.compilers.length > 0) {
+      let compilerLabel = entity.compilers.length > 1 ? 'comps' : 'comp';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.compilers, entityDb),
+        ' (',
+        compilerLabel,
+        ').'
+      );
+    }
     if (entity.title) {
       fragments.push(
         ' ',
@@ -5616,6 +5892,33 @@
         '.'
       );
     }
+    if (entity.editors && entity.editors.length > 0) {
+      let editorLabel = entity.editors.length > 1 ? 'eds' : 'ed';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.editors, entityDb),
+        ' (',
+        editorLabel,
+        ').'
+      );
+    }
+    if (entity.translators && entity.translators.length > 0) {
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.translators, entityDb),
+        ' (trans).'
+      );
+    }
+    if (entity.advisors && entity.advisors.length > 0) {
+      let advisorLabel = entity.advisors.length > 1 ? 'advisors' : 'advisor';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.advisors, entityDb),
+        ' (',
+        advisorLabel,
+        ').'
+      );
+    }
     if (entity.title) {
       fragments.push(
         ' ',
@@ -5645,6 +5948,43 @@
       fragments = fragments.concat(
         _renderAuthors($$, entity.authors, entityDb),
         '.'
+      );
+    }
+    if (entity.editors && entity.editors.length > 0) {
+      let editorLabel = entity.editors.length > 1 ? 'eds' : 'ed';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.editors, entityDb),
+        ' (',
+        editorLabel,
+        ').'
+      );
+    }
+    if (entity.translators && entity.translators.length > 0) {
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.translators, entityDb),
+        ' (trans).'
+      );
+    }
+    if (entity.compilers && entity.compilers.length > 0) {
+      let compilerLabel = entity.compilers.length > 1 ? 'comps' : 'comp';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.compilers, entityDb),
+        ' (',
+        compilerLabel,
+        ').'
+      );
+    }
+    if (entity.curators && entity.curators.length > 0) {
+      let curatorLabel = entity.curators.length > 1 ? 'curators' : 'curator';
+      fragments = fragments.concat(
+        ' ',
+        _renderAuthors($$, entity.curators, entityDb),
+        ' (',
+        curatorLabel,
+        ').'
       );
     }
     if (entity.title) {
@@ -18239,14 +18579,19 @@
       // fields labels
       config.addLabel('authors', 'Authors');
       config.addLabel('edit-authors', 'Edit Authors');
-
       config.addLabel('editors', 'Editors');
       config.addLabel('edit-editors', 'Edit Editors');
       config.addLabel('compilers', 'Compilers');
       config.addLabel('edit-compilers', 'Edit Compilers');
-
       config.addLabel('translators', 'Translators');
       config.addLabel('edit-translators', 'Edit Translators');
+      config.addLabel('curators', 'Curators');
+      config.addLabel('edit-curators', 'Edit Curators');
+      config.addLabel('illustrators', 'Illustrators');
+      config.addLabel('edit-illustrators', 'Edit Illustrators');
+      config.addLabel('advisors', 'Advisors');
+      config.addLabel('edit-advisors', 'Edit Advisors');
+      config.addLabel('edit-sponsors', 'Edit Sponsors');
 
       config.addLabel('abstract', 'Main Abstract');
       config.addLabel('abstractType', 'Abstract Type');
@@ -18254,7 +18599,8 @@
       config.addLabel('accessionId', 'Accession ID');
       config.addLabel('archiveId', 'Archive ID');
       config.addLabel('arkId', 'ARK ID');
-      config.addLabel('assignee', 'Assignee');
+      config.addLabel('assignees', 'Assignees');
+      config.addLabel('edit-assignees', 'Edit Assignees');
       config.addLabel('confLoc', 'Conference Location');
       config.addLabel('confName', 'Conference Name');
       config.addLabel('containerTitle', 'Source');
@@ -18984,7 +19330,6 @@
 
   function _setCitationObjects(node, el) {
     Object.assign(node, {
-      assignee: getText(el, 'collab[collab-type=assignee] > named-content'),
       confName: getText(el, 'conf-name'),
       confLoc: getText(el, 'conf-loc'),
       day: getText(el, 'day'),
@@ -19039,6 +19384,7 @@
     node.editors = _importPersonGroup(el, doc, 'editor');
     node.compilers = _importPersonGroup(el, doc, 'compiler');
     node.inventors = _importPersonGroup(el, doc, 'inventor');
+    node.assignees = _importPersonGroup(el, doc, 'assignee');
     node.sponsors = _importPersonGroup(el, doc, 'sponsor');
     node.translators = _importPersonGroup(el, doc, 'translator');
   }
@@ -19090,13 +19436,7 @@
     const doc = node.getDocument();
     const type = node.type;
     let el = $$('element-citation').attr('publication-type', INTERNAL_BIBR_TYPES_TO_JATS[type]);
-    if (node.assignee) {
-      el.append(
-        $$('collab').attr('collab-type', 'assignee').append(
-          $$('named-content').attr({ 'content-type': 'name' }).text(node.assignee)
-        )
-      );
-    }
+
     el.append(_createTextElement$1($$, node.confName, 'conf-name'));
     el.append(_createTextElement$1($$, node.confLoc, 'conf-loc'));
     el.append(_createTextElement$1($$, node.day, 'day'));
@@ -19129,6 +19469,7 @@
     el.append(_exportPersonGroup($$, doc, node.editors, 'editor'));
     el.append(_exportPersonGroup($$, doc, node.compilers, 'compiler'));
     el.append(_exportPersonGroup($$, doc, node.inventors, 'inventor'));
+    el.append(_exportPersonGroup($$, doc, node.assignees, 'assignee'));
     el.append(_exportPersonGroup($$, doc, node.sponsors, 'sponsor'));
     el.append(_exportPersonGroup($$, doc, node.translators, 'translator'));
 
