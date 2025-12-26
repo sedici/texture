@@ -4476,11 +4476,14 @@
     editors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="editor">
     translators: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="translator">
     advisors: substance.CHILDREN('ref-contrib'), // <person-group person-group-type="advisor">
+    degree: substance.STRING, // <degree>
     year: substance.STRING, // <year>
     month: substance.STRING, // <month>
     day: substance.STRING, // <day>
     publisherLoc: substance.STRING, // <publisher-loc>
     publisherName: substance.STRING, // <publisher-name>
+    awardingInstitution: substance.STRING, // <institution>
+    publicationNumber: substance.STRING, // <pub-id pub-id-type="other">
     doi: substance.STRING // <pub-id pub-id-type="doi">
   };
 
@@ -17039,6 +17042,12 @@
       config.addLabel('edit-author', 'Edit Author');
       // Reference tools
       config.addLabel('edit-reference', 'Edit Reference');
+      config.addLabel('degree', { en: 'Degree', es: 'Grado' });
+      config.addLabel('awardingInstitution', { en: 'Awarding Institution', es: 'Institución Otorgante' });
+      config.addLabel('publicationNumber', { en: 'Publication Number', es: 'Número de Publicación' });
+      config.addLabel('curator', { en: 'Curator', es: 'Curador' });
+      config.addLabel('illustrator', { en: 'Illustrator', es: 'Ilustrador' });
+      config.addLabel('advisor', { en: 'Advisor', es: 'Director' });
       config.addLabel('remove-reference', 'Remove Reference');
       // Context tools
       config.addLabel('context-tools', 'Edit');
@@ -19347,6 +19356,9 @@
       publisherLoc: getSeparatedText(el, 'publisher-loc'),
       publisherName: getSeparatedText(el, 'publisher-name'),
       series: getText(el, 'series'),
+      degree: getText(el, 'degree'),
+      awardingInstitution: getText(el, 'institution'),
+      publicationNumber: getText(el, 'pub-id[pub-id-type=other]'),
       uri: getText(el, 'uri'),
       version: getText(el, 'version'),
       volume: getText(el, 'volume'),
@@ -19365,6 +19377,9 @@
   function _importElementCitation(el, node, doc, importer) {
     const type = el.attr('publication-type');
     node.type = JATS_BIBR_TYPES_TO_INTERNAL[type];
+    if (!node.type && type === 'data') {
+      node.type = 'data-publication-ref';
+    }
     _setCitationObjects(node, el);
 
     if (type === 'book' || type === 'report' || type === 'software') {
@@ -19387,6 +19402,9 @@
     node.assignees = _importPersonGroup(el, doc, 'assignee');
     node.sponsors = _importPersonGroup(el, doc, 'sponsor');
     node.translators = _importPersonGroup(el, doc, 'translator');
+    node.advisors = _importPersonGroup(el, doc, 'advisor');
+    node.curators = _importPersonGroup(el, doc, 'curator');
+    node.illustrators = _importPersonGroup(el, doc, 'illustrator');
   }
 
   function getAnnotatedText(importer, rootEl, selector, path) {
@@ -19435,7 +19453,11 @@
     const $$ = exporter.$$;
     const doc = node.getDocument();
     const type = node.type;
-    let el = $$('element-citation').attr('publication-type', INTERNAL_BIBR_TYPES_TO_JATS[type]);
+    let pubType = INTERNAL_BIBR_TYPES_TO_JATS[type];
+    if (!pubType && type === 'data-publication-ref') {
+      pubType = 'data';
+    }
+    let el = $$('element-citation').attr('publication-type', pubType);
 
     el.append(_createTextElement$1($$, node.confName, 'conf-name'));
     el.append(_createTextElement$1($$, node.confLoc, 'conf-loc'));
@@ -19457,6 +19479,9 @@
     el.append(_createTextElement$1($$, node.version, 'version'));
     el.append(_createTextElement$1($$, node.volume, 'volume'));
     el.append(_createTextElement$1($$, node.year, 'year'));
+    el.append(_createTextElement$1($$, node.degree, 'degree'));
+    el.append(_createTextElement$1($$, node.awardingInstitution, 'institution'));
+    el.append(_createTextElement$1($$, node.publicationNumber, 'pub-id', { 'pub-id-type': 'other' }));
     // identifiers
     el.append(_createTextElement$1($$, node.accessionId, 'pub-id', { 'pub-id-type': 'accession' }));
     el.append(_createTextElement$1($$, node.arkId, 'pub-id', { 'pub-id-type': 'ark' }));
@@ -19472,6 +19497,9 @@
     el.append(_exportPersonGroup($$, doc, node.assignees, 'assignee'));
     el.append(_exportPersonGroup($$, doc, node.sponsors, 'sponsor'));
     el.append(_exportPersonGroup($$, doc, node.translators, 'translator'));
+    el.append(_exportPersonGroup($$, doc, node.advisors, 'advisor'));
+    el.append(_exportPersonGroup($$, doc, node.curators, 'curator'));
+    el.append(_exportPersonGroup($$, doc, node.illustrators, 'illustrator'));
 
     if (type === BOOK_REF || type === REPORT_REF || type === SOFTWARE_REF) {
       el.append(_exportAnnotatedText$1(exporter, [node.id, 'title'], 'source'));
