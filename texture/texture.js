@@ -3337,7 +3337,8 @@
     day: substance.STRING, // <day>
     elocationId: substance.STRING, // <elocation-id>
     doi: substance.STRING, // <pub-id pub-id-type="doi">
-    pmid: substance.STRING // <pub-id pub-id-type="pmid">
+    pmid: substance.STRING, // <pub-id pub-id-type="pmid">
+    uri: substance.STRING // <uri>
   };
 
   class BlockFormula extends substance.DocumentNode {
@@ -3431,7 +3432,8 @@
     series: substance.STRING, // <series>
     doi: substance.STRING, // <pub-id pub-id-type="doi">
     isbn: substance.STRING, // <pub-id pub-id-type="isbn">
-    pmid: substance.STRING // <pub-id pub-id-type="pmid">
+    pmid: substance.STRING, // <pub-id pub-id-type="pmid">
+    uri: substance.STRING // <uri>
   };
 
   class Break extends substance.InlineNode { }
@@ -3489,7 +3491,8 @@
     series: substance.STRING, // <series>
     doi: substance.STRING, // <pub-id pub-id-type="doi">
     isbn: substance.STRING, // <pub-id pub-id-type="isbn">
-    pmid: substance.STRING // <pub-id pub-id-type="pmid">
+    pmid: substance.STRING, // <pub-id pub-id-type="pmid">
+    uri: substance.STRING // <uri>
   };
 
   /*
@@ -3524,7 +3527,8 @@
     lpage: substance.STRING, // <lpage>
     pageRange: substance.STRING, // <page-range>
     elocationId: substance.STRING, // <elocation-id>
-    doi: substance.STRING // <pub-id pub-id-type="doi">
+    doi: substance.STRING, // <pub-id pub-id-type="doi">
+    uri: substance.STRING // <uri>
   };
 
   class CustomAbstract extends Abstract {
@@ -3599,7 +3603,8 @@
     accessionId: substance.STRING, // <pub-id pub-id-type="accession">
     arkId: substance.STRING, // // <pub-id pub-id-type="ark">
     archiveId: substance.STRING, // <pub-id pub-id-type="archive">
-    doi: substance.STRING // <pub-id pub-id-type="doi">
+    doi: substance.STRING, // <pub-id pub-id-type="doi">
+    uri: substance.STRING // <uri>
   };
 
   class ExternalLink extends Annotation {
@@ -4071,7 +4076,8 @@
     fpage: substance.STRING, // <fpage>
     lpage: substance.STRING, // <lpage>
     pageRange: substance.STRING, // <page-range>
-    doi: substance.STRING // <pub-id pub-id-type="doi">
+    doi: substance.STRING, // <pub-id pub-id-type="doi">
+    uri: substance.STRING // <uri>
   };
 
   class Metadata extends substance.DocumentNode { }
@@ -4142,7 +4148,8 @@
     pageRange: substance.STRING, // <page-range>
     doi: substance.STRING, // <pub-id pub-id-type="doi">
     edition: substance.STRING, // <edition>
-    partTitle: substance.STRING // <part-title>
+    partTitle: substance.STRING, // <part-title>
+    uri: substance.STRING // <uri>
   };
 
   class Overline extends Annotation { }
@@ -4309,7 +4316,8 @@
     publisherLoc: substance.STRING, // <publisher-loc>
     series: substance.STRING, // <series>
     isbn: substance.STRING, // <pub-id pub-id-type="isbn">
-    doi: substance.STRING // <pub-id pub-id-type="doi">
+    doi: substance.STRING, // <pub-id pub-id-type="doi">
+    uri: substance.STRING // <uri>
   };
 
   class SmallCaps extends Annotation { }
@@ -4490,7 +4498,8 @@
     publisherName: substance.STRING, // <publisher-name>
     awardingInstitution: substance.STRING, // <institution>
     publicationNumber: substance.STRING, // <pub-id pub-id-type="other">
-    doi: substance.STRING // <pub-id pub-id-type="doi">
+    doi: substance.STRING, // <pub-id pub-id-type="doi">
+    uri: substance.STRING // <uri>
   };
 
   class Underline extends Annotation { }
