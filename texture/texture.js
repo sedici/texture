@@ -3338,7 +3338,8 @@
     elocationId: substance.STRING, // <elocation-id>
     doi: substance.STRING, // <pub-id pub-id-type="doi">
     pmid: substance.STRING, // <pub-id pub-id-type="pmid">
-    uri: substance.STRING // <uri>
+    uri: substance.STRING, // <uri>
+    comment: substance.STRING // <comment>
   };
 
   class BlockFormula extends substance.DocumentNode {
@@ -3433,7 +3434,8 @@
     doi: substance.STRING, // <pub-id pub-id-type="doi">
     isbn: substance.STRING, // <pub-id pub-id-type="isbn">
     pmid: substance.STRING, // <pub-id pub-id-type="pmid">
-    uri: substance.STRING // <uri>
+    uri: substance.STRING, // <uri>
+    comment: substance.STRING // <comment>
   };
 
   class Break extends substance.InlineNode { }
@@ -3492,7 +3494,8 @@
     doi: substance.STRING, // <pub-id pub-id-type="doi">
     isbn: substance.STRING, // <pub-id pub-id-type="isbn">
     pmid: substance.STRING, // <pub-id pub-id-type="pmid">
-    uri: substance.STRING // <uri>
+    uri: substance.STRING, // <uri>
+    comment: substance.STRING // <comment>
   };
 
   /*
@@ -3908,7 +3911,8 @@
     elocationId: substance.STRING, // <elocation-id>
     uri: substance.STRING, // <uri>
     doi: substance.STRING, // <pub-id pub-id-type="doi">
-    pmid: substance.STRING // <pub-id pub-id-type="pmid">
+    pmid: substance.STRING, // <pub-id pub-id-type="pmid">
+    comment: substance.STRING // <comment>
   };
 
   class Keyword extends substance.DocumentNode {
@@ -4077,7 +4081,8 @@
     lpage: substance.STRING, // <lpage>
     pageRange: substance.STRING, // <page-range>
     doi: substance.STRING, // <pub-id pub-id-type="doi">
-    uri: substance.STRING // <uri>
+    uri: substance.STRING, // <uri>
+    comment: substance.STRING // <comment>
   };
 
   class Metadata extends substance.DocumentNode { }
@@ -4149,7 +4154,8 @@
     doi: substance.STRING, // <pub-id pub-id-type="doi">
     edition: substance.STRING, // <edition>
     partTitle: substance.STRING, // <part-title>
-    uri: substance.STRING // <uri>
+    uri: substance.STRING, // <uri>
+    comment: substance.STRING // <comment>
   };
 
   class Overline extends Annotation { }
@@ -18661,6 +18667,7 @@
       config.addLabel('confLoc', 'Conference Location');
       config.addLabel('confName', 'Conference Name');
       config.addLabel('containerTitle', 'Source');
+      config.addLabel('comment', 'Comment (e.g., Original work published YYYY)');
       config.addLabel('custom-abstract', 'Custom Abstract');
       config.addLabel('day', 'Day');
       config.addLabel('doi', 'DOI');
@@ -19418,7 +19425,8 @@
       arkId: getText(el, 'pub-id[pub-id-type=ark]'),
       isbn: getText(el, 'pub-id[pub-id-type=isbn]'),
       doi: getText(el, 'pub-id[pub-id-type=doi]'),
-      pmid: getText(el, 'pub-id[pub-id-type=pmid]')
+      pmid: getText(el, 'pub-id[pub-id-type=pmid]'),
+      comment: getText(el, 'comment')
     });
   }
 
@@ -19532,6 +19540,7 @@
     el.append(_createTextElement$1($$, node.degree, 'degree'));
     el.append(_createTextElement$1($$, node.awardingInstitution, 'institution'));
     el.append(_createTextElement$1($$, node.publicationNumber, 'pub-id', { 'pub-id-type': 'other' }));
+    el.append(_createTextElement$1($$, node.comment, 'comment'));
     // identifiers
     el.append(_createTextElement$1($$, node.accessionId, 'pub-id', { 'pub-id-type': 'accession' }));
     el.append(_createTextElement$1($$, node.arkId, 'pub-id', { 'pub-id-type': 'ark' }));
