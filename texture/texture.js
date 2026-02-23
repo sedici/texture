@@ -4323,7 +4323,8 @@
     series: substance.STRING, // <series>
     isbn: substance.STRING, // <pub-id pub-id-type="isbn">
     doi: substance.STRING, // <pub-id pub-id-type="doi">
-    uri: substance.STRING // <uri>
+    uri: substance.STRING, // <uri>
+    reportNumber: substance.STRING // <pub-id pub-id-type="custom" custom-type="report-number">
   };
 
   class SmallCaps extends Annotation { }
@@ -17091,6 +17092,7 @@
       config.addLabel('degree', { en: 'Degree', es: 'Grado' });
       config.addLabel('awardingInstitution', { en: 'Awarding Institution', es: 'Institución Otorgante' });
       config.addLabel('publicationNumber', { en: 'Publication Number', es: 'Número de Publicación' });
+      config.addLabel('reportNumber', { en: 'Report Number', es: 'Número de Reporte' });
       config.addLabel('curator', { en: 'Curator', es: 'Curador' });
       config.addLabel('illustrator', { en: 'Illustrator', es: 'Ilustrador' });
       config.addLabel('advisor', { en: 'Advisor', es: 'Director' });
@@ -19414,6 +19416,7 @@
       degree: getText(el, 'degree'),
       awardingInstitution: getText(el, 'institution'),
       publicationNumber: getText(el, 'pub-id[pub-id-type=other]'),
+      reportNumber: getText(el, 'pub-id[pub-id-type=custom][custom-type=report-number]'),
       uri: getText(el, 'uri'),
       version: getText(el, 'version'),
       volume: getText(el, 'volume'),
@@ -19540,6 +19543,7 @@
     el.append(_createTextElement$1($$, node.degree, 'degree'));
     el.append(_createTextElement$1($$, node.awardingInstitution, 'institution'));
     el.append(_createTextElement$1($$, node.publicationNumber, 'pub-id', { 'pub-id-type': 'other' }));
+    el.append(_createTextElement$1($$, node.reportNumber, 'pub-id', { 'pub-id-type': 'custom', 'custom-type': 'report-number' }));
     el.append(_createTextElement$1($$, node.comment, 'comment'));
     // identifiers
     el.append(_createTextElement$1($$, node.accessionId, 'pub-id', { 'pub-id-type': 'accession' }));
