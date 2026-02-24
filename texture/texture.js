@@ -4077,6 +4077,7 @@
     month: substance.STRING, // <month>
     day: substance.STRING, // <month>
     volume: substance.STRING, // <volume>
+    issue: substance.STRING, // <issue>
     fpage: substance.STRING, // <fpage>
     lpage: substance.STRING, // <lpage>
     pageRange: substance.STRING, // <page-range>
@@ -4148,6 +4149,7 @@
     month: substance.STRING, // <month>
     day: substance.STRING, // <day>
     volume: substance.STRING, // <volume>
+    issue: substance.STRING, // <issue>
     fpage: substance.STRING, // <fpage>
     lpage: substance.STRING, // <lpage>
     pageRange: substance.STRING, // <page-range>
@@ -5602,6 +5604,13 @@
       }
     }
 
+    if (entity.volume) {
+      fragments.push(entity.volume);
+    }
+    if (entity.issue) {
+      fragments.push('(', entity.issue, ')');
+    }
+
     let contentLocation = _renderLocation($$, entity.fpage, entity.lpage, entity.pageRange, entity.elocationId);
     if (contentLocation) {
       fragments.push(':', contentLocation, '.');
@@ -5684,6 +5693,13 @@
       if (entity.month) {
         fragments.push(' ', _renderMonth(entity.month, 'short'));
       }
+    }
+
+    if (entity.volume) {
+      fragments.push(entity.volume);
+    }
+    if (entity.issue) {
+      fragments.push('(', entity.issue, ')');
     }
 
     let contentLocation = _renderLocation($$, entity.fpage, entity.lpage, entity.pageRange, entity.elocationId);
