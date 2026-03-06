@@ -4194,7 +4194,8 @@
     day: substance.STRING, // <day>
     patentNumber: substance.STRING, // <patent>US20100941530</patent>
     patentCountry: substance.STRING, // <patent country="United States"></patent>
-    doi: substance.STRING // <pub-id pub-id-type="doi">
+    doi: substance.STRING, // <pub-id pub-id-type="doi">
+    uri: substance.STRING // <uri>
   };
 
   const extractInitials = givenNames => {
@@ -4370,7 +4371,8 @@
     year: substance.STRING, // <year>
     month: substance.STRING, // <month>
     day: substance.STRING, // <day>
-    doi: substance.STRING // <pub-id pub-id-type="doi">
+    doi: substance.STRING, // <pub-id pub-id-type="doi">
+    uri: substance.STRING // <uri>
   };
 
   class StrikeThrough extends Annotation { }
