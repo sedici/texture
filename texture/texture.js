@@ -3531,7 +3531,8 @@
     pageRange: substance.STRING, // <page-range>
     elocationId: substance.STRING, // <elocation-id>
     doi: substance.STRING, // <pub-id pub-id-type="doi">
-    uri: substance.STRING // <uri>
+    uri: substance.STRING, // <uri>
+    presentationType: substance.STRING
   };
 
   class CustomAbstract extends Abstract {
@@ -18707,6 +18708,7 @@
       config.addLabel('patentCountry', 'Patent Country');
       config.addLabel('patentNumber', 'Patent Number');
       config.addLabel('partTitle', 'Part Title');
+      config.addLabel('presentationType', 'Presentation Type');
       config.addLabel('pmid', 'PubMed ID');
       config.addLabel('publisherLoc', 'Publisher Location');
       config.addLabel('publisherName', 'Publisher Name');
@@ -19447,7 +19449,8 @@
       isbn: getText(el, 'pub-id[pub-id-type=isbn]'),
       doi: getText(el, 'pub-id[pub-id-type=doi]'),
       pmid: getText(el, 'pub-id[pub-id-type=pmid]'),
-      comment: getText(el, 'comment')
+      comment: getText(el, 'comment'),
+      presentationType: getText(el, 'comment[content-type=presentation-type]')
     });
   }
 
@@ -19563,6 +19566,7 @@
     el.append(_createTextElement$1($$, node.publicationNumber, 'pub-id', { 'pub-id-type': 'other' }));
     el.append(_createTextElement$1($$, node.reportNumber, 'pub-id', { 'pub-id-type': 'custom', 'custom-type': 'report-number' }));
     el.append(_createTextElement$1($$, node.comment, 'comment'));
+    el.append(_createTextElement$1($$, node.presentationType, 'comment', { 'content-type': 'presentation-type' }));
     // identifiers
     el.append(_createTextElement$1($$, node.accessionId, 'pub-id', { 'pub-id-type': 'accession' }));
     el.append(_createTextElement$1($$, node.arkId, 'pub-id', { 'pub-id-type': 'ark' }));
