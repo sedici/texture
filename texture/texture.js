@@ -4286,8 +4286,9 @@
 
   RefContrib.schema = {
     type: 'ref-contrib',
-    name: substance.STRING, // either family name or institution name
-    givenNames: substance.STRING
+    name: substance.STRING, // family name (person author)
+    givenNames: substance.STRING, // given names (person author)
+    institutionName: substance.STRING // institution name → generates <collab> in JATS
   };
 
   /*
@@ -11470,6 +11471,9 @@
           this._renderValue($$, 'givenNames', {
             placeholder: this.getLabel('given-names')
           }).addClass('sm-given-names'),
+          this._renderValue($$, 'institutionName', {
+            placeholder: this.getLabel('institution-name')
+          }).addClass('sm-institution-name'),
           $$(Button, {
             icon: 'remove'
             // TODO: do we need this ref?
@@ -18696,6 +18700,7 @@
       config.addLabel('elocationId', 'E-Location ID');
       config.addLabel('fpage', 'First Page');
       config.addLabel('given-names', 'Given Names');
+      config.addLabel('institution-name', 'Institution Name');
       config.addLabel('inventors', 'Inventors');
       config.addLabel('isbn', 'ISBN');
       config.addLabel('issue', 'Issue');
@@ -19523,7 +19528,8 @@
       // prefix: getText(el, 'prefix'),
       // suffix: getText(el, 'suffix'),
     } else if (el.tagName === 'collab') {
-      refContrib.name = getText(el, 'named-content[content-type=name]');
+      // Populate institutionName so the explicit institution field is shown in the UI
+      refContrib.institutionName = getText(el, 'named-content[content-type=name]');
     } else {
       console.warn(`${el.tagName} not supported inside <person-group>`);
       return null
@@ -19624,13 +19630,17 @@
 
   function _exportRefContrib($$, refContrib) {
     let el;
-    if (refContrib.givenNames) {
+    if (refContrib.institutionName) {
+      // Explicit institutional author field → generates <collab>
+      el = $$('collab');
+      el.append(_createTextElement$1($$, refContrib.institutionName, 'named-content', { 'content-type': 'name' }));
+    } else if (refContrib.name) {
+      // Person author (with or without given names) → always generates <name>
       el = $$('name');
       el.append(_createTextElement$1($$, refContrib.name, 'surname'));
-      el.append(_createTextElement$1($$, refContrib.givenNames, 'given-names'));
-    } else if (refContrib.name) {
-      el = $$('collab');
-      el.append(_createTextElement$1($$, refContrib.name, 'named-content', { 'content-type': 'name' }));
+      if (refContrib.givenNames) {
+        el.append(_createTextElement$1($$, refContrib.givenNames, 'given-names'));
+      }
     } else {
       console.warn('No content found for refContrib node');
     }
