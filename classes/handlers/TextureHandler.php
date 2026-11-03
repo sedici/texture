@@ -243,7 +243,8 @@ class TextureHandler extends Handler
 	{
 		/** @var GenreDAO $genreDao */
 		$genreDao = DAORegistry::getDAO('GenreDAO');
-		$genres = $genreDao->getByDependenceAndContextId(true, $request->getJournal()->getId());
+		// All enabled genres: the IMAGE genre is not always configured as a dependent genre
+		$genres = $genreDao->getEnabledByContextId($request->getJournal()->getId());
 
 		while ($candidateGenre = $genres->next()) {
 			if ($extension) {
