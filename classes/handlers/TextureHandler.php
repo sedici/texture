@@ -29,6 +29,7 @@ use APP\template\TemplateManager;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Http\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use PKP\db\DAORegistry;
 use PKP\file\FileManager;
 use PKP\security\authorization\WorkflowStageAccessPolicy;
@@ -47,7 +48,7 @@ class TextureHandler extends Handler
 
 		$this->plugin = $plugin;
 		$this->addRoleAssignment(TexturePlugin::AUTHORIZED_ROLES,
-			['editor', 'json']
+			['editor', 'json', 'media']
 		);
 	}
 
@@ -201,6 +202,38 @@ class TextureHandler extends Handler
 		}
 
 		return response(__('common.ok'), Response::HTTP_OK);
+	}
+
+	/**
+	 * Serve an image (dependent file) of the XML document being edited.
+	 * Only files attached to an XML file of the authorized submission are served.
+	 */
+	public function media($args, $request): string
+	{
+		$fileId = (int)$request->getUserVar('fileId');
+		$assocId = (int)$request->getUserVar('assocId');
+
+		$submissionFile = Repo::submissionFile()->get($assocId);
+		if (!$submissionFile || (int)$submissionFile->getData('submissionId') !== $this->submission->getId()) {
+			throw new NotFoundHttpException();
+		}
+
+		$mediaFile = Repo::submissionFile()->getCollector()
+			->filterByAssoc(Application::ASSOC_TYPE_SUBMISSION_FILE, [$assocId])
+			->filterBySubmissionIds([$this->submission->getId()])
+			->filterByFileStages([SubmissionFile::SUBMISSION_FILE_DEPENDENT])
+			->includeDependentFiles()
+			->getMany()
+			->first(fn($file) => (int)$file->getData('fileId') === $fileId);
+
+		if (!$mediaFile || !Services::get('file')->fs->fileExists($mediaFile->getData('path'))) {
+			throw new NotFoundHttpException();
+		}
+
+		$content = Services::get('file')->fs->read($mediaFile->getData('path'));
+		header('Content-Type: ' . $mediaFile->getData('mimetype'));
+		header('Content-Length: ' . strlen($content));
+		return $content;
 	}
 
 	/**
