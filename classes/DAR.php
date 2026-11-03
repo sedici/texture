@@ -196,7 +196,25 @@ class DAR
 			->includeDependentFiles()
 			->getMany();
 
+		// Match each image referenced in the manuscript with its dependent file by file name
+		// (case-insensitive basename), and key the media info by the path used in the XML.
+		$byBasename = [];
 		foreach ($dependentFilesIterator as $dependentFile) {
+			$fileName = $dependentFile->getLocalizedData('name');
+			if ($fileName) {
+				$byBasename[strtolower(basename($fileName))] = $dependentFile;
+			}
+		}
+
+		foreach ((array)$assets as $asset) {
+			if (empty($asset['path'])) {
+				continue;
+			}
+			$dependentFile = $byBasename[strtolower(basename($asset['path']))] ?? null;
+			if (!$dependentFile) {
+				continue;
+			}
+
 			$url = $dispatcher->url($request, Application::ROUTE_PAGE, null, 'texture', 'media', null,
 				[
 					'submissionId' => $submissionId,
@@ -205,11 +223,10 @@ class DAR
 					'fileId' => $dependentFile->getData('fileId')
 				]);
 
-			$infos[$dependentFile->getLocalizedData('name')] = [
+			$infos[$asset['path']] = [
 				'encoding' => 'url',
 				'data' => $url
 			];
-
 		}
 
 		return $infos;
