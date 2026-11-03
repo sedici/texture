@@ -68,9 +68,11 @@ class TextureHandler extends Handler
 	 */
 	public function authorize($request, &$args, $roleAssignments): bool
 	{
+		// The editor can be opened from the file lists of any workflow stage (as in OJS 3.4),
+		// so access is checked against the workflow stage the request comes from.
 		$this->addPolicy(
 			new WorkflowStageAccessPolicy(
-				$request, $args, $roleAssignments, 'submissionId', WORKFLOW_STAGE_ID_PRODUCTION)
+				$request, $args, $roleAssignments, 'submissionId', (int)$request->getUserVar('stageId'))
 		);
 		return parent::authorize($request, $args, $roleAssignments);
 	}
@@ -85,7 +87,7 @@ class TextureHandler extends Handler
 		if (!$submissionFile || (int)$submissionFile->getData('submissionId') !== $this->submission->getId()) {
 			return response(__('api.404.resourceNotFound'), Response::HTTP_NOT_FOUND);
 		}
-		$stageId = $submissionFile->getData('fileStage');
+		$stageId = (int)$request->getUserVar('stageId');
 		$submissionId = $submissionFile->getData('submissionId');
 		if (!$submissionId || !$stageId || !$submissionFileId) {
 			return response(__('api.404.resourceNotFound'), Response::HTTP_NOT_FOUND);
