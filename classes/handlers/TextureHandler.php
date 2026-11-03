@@ -187,7 +187,8 @@ class TextureHandler extends Handler
 				$allowedLocales = $request->getContext()->getData('supportedSubmissionLocales');
 				$newSubmissionFile = Repo::submissionFile()->newDataObject();
 				$newSubmissionFile->setData('fileId', $fileId);
-				$newSubmissionFile->setData('name', array_fill_keys(array_keys($allowedLocales), $media["fileName"]));
+				// supportedSubmissionLocales is a list of locale codes: use the codes (not the list indexes) as keys
+				$newSubmissionFile->setData('name', array_fill_keys(array_values((array)$allowedLocales), $media["fileName"]));
 				$newSubmissionFile->setData('submissionId', $this->submission->getId());
 				$newSubmissionFile->setData('uploaderUserId', $request->getUser()->getId());
 				$newSubmissionFile->setData('assocType', Application::ASSOC_TYPE_SUBMISSION_FILE);
