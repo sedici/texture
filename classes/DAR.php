@@ -17,7 +17,6 @@
 namespace APP\plugins\generic\texture\classes;
 
 use APP\core\Application;
-use APP\core\Services;
 use APP\facades\Repo;
 use APP\plugins\generic\texture\TexturePlugin;
 use DOMDocument;
@@ -33,7 +32,7 @@ class DAR
 	public function createDarJson(DAR $dar, $request, $submissionFile): array
 	{
 		$assets = [];
-		$manuscript = Services::get('file')->fs->read($submissionFile->getData('path'));
+		$manuscript = app()->get('file')->fs->read($submissionFile->getData('path'));
 		$manuscript = $dar->createManuscript($manuscript);
 
 		$contents = $dar->createManifest($manuscript, $assets);

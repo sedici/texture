@@ -17,7 +17,6 @@
 namespace APP\plugins\generic\texture\classes\handlers;
 
 use APP\core\Application;
-use APP\core\Services;
 use APP\facades\Repo;
 use APP\handler\Handler;
 use APP\plugins\generic\texture\classes\DAR;
@@ -149,7 +148,7 @@ class TextureHandler extends Handler
 		}
 
 		if ($_SERVER["REQUEST_METHOD"] === "GET") {
-			if (!Services::get('file')->fs->fileExists($submissionFile->getData('path'))) {
+			if (!app()->get('file')->fs->fileExists($submissionFile->getData('path'))) {
 				return response(__('plugins.generic.texture.error.fileNotFound'), Response::HTTP_NOT_FOUND);
 			}
 			$mediaBlob = $dar->createDarJson($dar, $request, $submissionFile);
@@ -183,7 +182,7 @@ class TextureHandler extends Handler
 				$fileManager = new FileManager();
 				$extension = $fileManager->parseFileExtension($media['fileName']);
 				$submissionDir = Repo::submissionFile()->getSubmissionDir($request->getContext()->getData('id'), $this->submission->getId());
-				$fileId = Services::get('file')->add($tempMediaFile, $submissionDir . '/' . bin2hex(random_bytes(32)) . '.' . $extension);
+				$fileId = app()->get('file')->add($tempMediaFile, $submissionDir . '/' . bin2hex(random_bytes(32)) . '.' . $extension);
 				unlink($tempMediaFile);
 
 				$allowedLocales = $request->getContext()->getData('supportedSubmissionLocales');
@@ -229,11 +228,11 @@ class TextureHandler extends Handler
 			->getMany()
 			->first(fn($file) => (int)$file->getData('fileId') === $fileId);
 
-		if (!$mediaFile || !Services::get('file')->fs->fileExists($mediaFile->getData('path'))) {
+		if (!$mediaFile || !app()->get('file')->fs->fileExists($mediaFile->getData('path'))) {
 			throw new NotFoundHttpException();
 		}
 
-		$content = Services::get('file')->fs->read($mediaFile->getData('path'));
+		$content = app()->get('file')->fs->read($mediaFile->getData('path'));
 		header('Content-Type: ' . $mediaFile->getData('mimetype'));
 		header('Content-Length: ' . strlen($content));
 		return $content;
@@ -277,10 +276,10 @@ class TextureHandler extends Handler
 		$modifiedDocument->loadXML($modifiedData);
 		$xpath = new DOMXpath($modifiedDocument);
 
-		if (!Services::get('file')->fs->fileExists($submissionFile->getData('path'))) {
+		if (!app()->get('file')->fs->fileExists($submissionFile->getData('path'))) {
 			return 0;
 		}
-		$manuscriptXml = Services::get('file')->fs->read($submissionFile->getData('path'));
+		$manuscriptXml = app()->get('file')->fs->read($submissionFile->getData('path'));
 		$origDocument = new DOMDocument('1.0', 'utf-8');
 		$modifiedData = XMLAmpersandEscaper::escapeAmpersands($modifiedData);
 		$origDocument->loadXML($manuscriptXml);
@@ -308,7 +307,7 @@ class TextureHandler extends Handler
 		$fileManager = new FileManager();
 		$extension = $fileManager->parseFileExtension($submissionFile->getData('path'));
 		$submissionDir = Repo::submissionFile()->getSubmissionDir($context->getData('id'), $submission->getData('id'));
-		$fileId = (int)Services::get('file')->add($tempName, $submissionDir . '/' . uniqid() . '.' . $extension);
+		$fileId = (int)app()->get('file')->add($tempName, $submissionDir . '/' . uniqid() . '.' . $extension);
 
 		Repo::submissionFile()->edit($submissionFile, [
 			'fileId' => $fileId,
