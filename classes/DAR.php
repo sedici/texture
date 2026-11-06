@@ -20,6 +20,7 @@ use APP\core\Application;
 use APP\facades\Repo;
 use APP\plugins\generic\texture\TexturePlugin;
 use DOMDocument;
+use DOMElement;
 use DOMImplementation;
 use DOMXPath;
 use PKP\submissionFile\SubmissionFile;
@@ -76,24 +77,24 @@ class DAR
 
 		$xpath = new DOMXpath($manuscriptXmlDom);
 
-		$editableManuscriptDom->article = $editableManuscriptDom->createElement('article');
+		$article = $editableManuscriptDom->createElement('article');
 		foreach ($xpath->query('namespace::*', $manuscriptXmlDom->documentElement) as $node) {
 			$nodeName = $node->nodeName;
 			$nodeValue = $node->nodeValue;
 			if ($nodeName !== "xmlns:xlink") {
-				$editableManuscriptDom->article->setAttribute($nodeName, $nodeValue);
+				$article->setAttribute($nodeName, $nodeValue);
 			}
 		}
-		$editableManuscriptDom->article->setAttributeNS(
+		$article->setAttributeNS(
 			"http://www.w3.org/2000/xmlns/",
 			"xmlns:xlink",
 			"http://www.w3.org/1999/xlink"
 		);
-		$editableManuscriptDom->article->setAttribute("article-type", "research-article");
+		$article->setAttribute("article-type", "research-article");
 
-		$editableManuscriptDom->appendChild($editableManuscriptDom->article);
+		$editableManuscriptDom->appendChild($article);
 
-		$this->createEmptyMetadata($editableManuscriptDom);
+		$this->createEmptyMetadata($editableManuscriptDom, $article);
 
 		$manuscriptBody = $xpath->query("/article/body");
 		foreach ($manuscriptBody as $content) {
@@ -234,22 +235,19 @@ class DAR
 	/**
 	 * Create empty metadata.
 	 */
-	protected function createEmptyMetadata(DOMDocument $dom): void
+	protected function createEmptyMetadata(DOMDocument $dom, DOMElement $article): void
 	{
-		$dom->front = $dom->createElement('front');
-		$dom->article->appendChild($dom->front);
+		$front = $dom->createElement('front');
+		$article->appendChild($front);
 
-		$dom->articleMeta = $dom->createElement('article-meta');
-		$dom->front->appendChild($dom->articleMeta);
+		$articleMeta = $dom->createElement('article-meta');
+		$front->appendChild($articleMeta);
 
-		$dom->titleGroup = $dom->createElement('title-group');
-		$dom->articleTitle = $dom->createElement('article-title');
+		$titleGroup = $dom->createElement('title-group');
+		$titleGroup->appendChild($dom->createElement('article-title'));
+		$articleMeta->appendChild($titleGroup);
 
-		$dom->titleGroup->appendChild($dom->articleTitle);
-		$dom->articleMeta->appendChild($dom->titleGroup);
-
-		$dom->abstract = $dom->createElement('abstract');
-		$dom->articleMeta->appendChild($dom->abstract);
+		$articleMeta->appendChild($dom->createElement('abstract'));
 	}
 
 	/**
