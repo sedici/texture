@@ -17,10 +17,10 @@
 namespace APP\plugins\generic\texture\classes;
 
 use APP\core\Application;
-use APP\core\Services;
 use APP\facades\Repo;
 use APP\plugins\generic\texture\TexturePlugin;
 use DOMDocument;
+use DOMElement;
 use DOMImplementation;
 use DOMXPath;
 use PKP\submissionFile\SubmissionFile;
@@ -33,7 +33,7 @@ class DAR
 	public function createDarJson(DAR $dar, $request, $submissionFile): array
 	{
 		$assets = [];
-		$manuscript = Services::get('file')->fs->read($submissionFile->getData('path'));
+		$manuscript = app()->get('file')->fs->read($submissionFile->getData('path'));
 		$manuscript = $dar->createManuscript($manuscript);
 
 		$contents = $dar->createManifest($manuscript, $assets);
@@ -77,24 +77,24 @@ class DAR
 
 		$xpath = new DOMXpath($manuscriptXmlDom);
 
-		$editableManuscriptDom->article = $editableManuscriptDom->createElement('article');
+		$article = $editableManuscriptDom->createElement('article');
 		foreach ($xpath->query('namespace::*', $manuscriptXmlDom->documentElement) as $node) {
 			$nodeName = $node->nodeName;
 			$nodeValue = $node->nodeValue;
 			if ($nodeName !== "xmlns:xlink") {
-				$editableManuscriptDom->article->setAttribute($nodeName, $nodeValue);
+				$article->setAttribute($nodeName, $nodeValue);
 			}
 		}
-		$editableManuscriptDom->article->setAttributeNS(
+		$article->setAttributeNS(
 			"http://www.w3.org/2000/xmlns/",
 			"xmlns:xlink",
 			"http://www.w3.org/1999/xlink"
 		);
-		$editableManuscriptDom->article->setAttribute("article-type", "research-article");
+		$article->setAttribute("article-type", "research-article");
 
-		$editableManuscriptDom->appendChild($editableManuscriptDom->article);
+		$editableManuscriptDom->appendChild($article);
 
-		$this->createEmptyMetadata($editableManuscriptDom);
+		$this->createEmptyMetadata($editableManuscriptDom, $article);
 
 		$manuscriptBody = $xpath->query("/article/body");
 		foreach ($manuscriptBody as $content) {
@@ -196,7 +196,25 @@ class DAR
 			->includeDependentFiles()
 			->getMany();
 
+		// Match each image referenced in the manuscript with its dependent file by file name
+		// (case-insensitive basename), and key the media info by the path used in the XML.
+		$byBasename = [];
 		foreach ($dependentFilesIterator as $dependentFile) {
+			$fileName = $dependentFile->getLocalizedData('name');
+			if ($fileName) {
+				$byBasename[strtolower(basename($fileName))] = $dependentFile;
+			}
+		}
+
+		foreach ((array)$assets as $asset) {
+			if (empty($asset['path'])) {
+				continue;
+			}
+			$dependentFile = $byBasename[strtolower(basename($asset['path']))] ?? null;
+			if (!$dependentFile) {
+				continue;
+			}
+
 			$url = $dispatcher->url($request, Application::ROUTE_PAGE, null, 'texture', 'media', null,
 				[
 					'submissionId' => $submissionId,
@@ -205,11 +223,10 @@ class DAR
 					'fileId' => $dependentFile->getData('fileId')
 				]);
 
-			$infos[$dependentFile->getLocalizedData('name')] = [
+			$infos[$asset['path']] = [
 				'encoding' => 'url',
 				'data' => $url
 			];
-
 		}
 
 		return $infos;
@@ -218,22 +235,19 @@ class DAR
 	/**
 	 * Create empty metadata.
 	 */
-	protected function createEmptyMetadata(DOMDocument $dom): void
+	protected function createEmptyMetadata(DOMDocument $dom, DOMElement $article): void
 	{
-		$dom->front = $dom->createElement('front');
-		$dom->article->appendChild($dom->front);
+		$front = $dom->createElement('front');
+		$article->appendChild($front);
 
-		$dom->articleMeta = $dom->createElement('article-meta');
-		$dom->front->appendChild($dom->articleMeta);
+		$articleMeta = $dom->createElement('article-meta');
+		$front->appendChild($articleMeta);
 
-		$dom->titleGroup = $dom->createElement('title-group');
-		$dom->articleTitle = $dom->createElement('article-title');
+		$titleGroup = $dom->createElement('title-group');
+		$titleGroup->appendChild($dom->createElement('article-title'));
+		$articleMeta->appendChild($titleGroup);
 
-		$dom->titleGroup->appendChild($dom->articleTitle);
-		$dom->articleMeta->appendChild($dom->titleGroup);
-
-		$dom->abstract = $dom->createElement('abstract');
-		$dom->articleMeta->appendChild($dom->abstract);
+		$articleMeta->appendChild($dom->createElement('abstract'));
 	}
 
 	/**

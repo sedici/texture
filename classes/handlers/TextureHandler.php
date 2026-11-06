@@ -17,7 +17,6 @@
 namespace APP\plugins\generic\texture\classes\handlers;
 
 use APP\core\Application;
-use APP\core\Services;
 use APP\facades\Repo;
 use APP\handler\Handler;
 use APP\plugins\generic\texture\classes\DAR;
@@ -29,6 +28,7 @@ use APP\template\TemplateManager;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Http\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use PKP\db\DAORegistry;
 use PKP\file\FileManager;
 use PKP\security\authorization\WorkflowStageAccessPolicy;
@@ -47,7 +47,7 @@ class TextureHandler extends Handler
 
 		$this->plugin = $plugin;
 		$this->addRoleAssignment(TexturePlugin::AUTHORIZED_ROLES,
-			['editor', 'json']
+			['editor', 'json', 'media']
 		);
 	}
 
@@ -67,9 +67,11 @@ class TextureHandler extends Handler
 	 */
 	public function authorize($request, &$args, $roleAssignments): bool
 	{
+		// The editor can be opened from the file lists of any workflow stage (as in OJS 3.4),
+		// so access is checked against the workflow stage the request comes from.
 		$this->addPolicy(
 			new WorkflowStageAccessPolicy(
-				$request, $args, $roleAssignments, 'submissionId', WORKFLOW_STAGE_ID_PRODUCTION)
+				$request, $args, $roleAssignments, 'submissionId', (int)$request->getUserVar('stageId'))
 		);
 		return parent::authorize($request, $args, $roleAssignments);
 	}
@@ -84,7 +86,7 @@ class TextureHandler extends Handler
 		if (!$submissionFile || (int)$submissionFile->getData('submissionId') !== $this->submission->getId()) {
 			return response(__('api.404.resourceNotFound'), Response::HTTP_NOT_FOUND);
 		}
-		$stageId = $submissionFile->getData('fileStage');
+		$stageId = (int)$request->getUserVar('stageId');
 		$submissionId = $submissionFile->getData('submissionId');
 		if (!$submissionId || !$stageId || !$submissionFileId) {
 			return response(__('api.404.resourceNotFound'), Response::HTTP_NOT_FOUND);
@@ -146,7 +148,7 @@ class TextureHandler extends Handler
 		}
 
 		if ($_SERVER["REQUEST_METHOD"] === "GET") {
-			if (!Services::get('file')->fs->fileExists($submissionFile->getData('path'))) {
+			if (!app()->get('file')->fs->fileExists($submissionFile->getData('path'))) {
 				return response(__('plugins.generic.texture.error.fileNotFound'), Response::HTTP_NOT_FOUND);
 			}
 			$mediaBlob = $dar->createDarJson($dar, $request, $submissionFile);
@@ -180,13 +182,14 @@ class TextureHandler extends Handler
 				$fileManager = new FileManager();
 				$extension = $fileManager->parseFileExtension($media['fileName']);
 				$submissionDir = Repo::submissionFile()->getSubmissionDir($request->getContext()->getData('id'), $this->submission->getId());
-				$fileId = Services::get('file')->add($tempMediaFile, $submissionDir . '/' . bin2hex(random_bytes(32)) . '.' . $extension);
+				$fileId = app()->get('file')->add($tempMediaFile, $submissionDir . '/' . bin2hex(random_bytes(32)) . '.' . $extension);
 				unlink($tempMediaFile);
 
 				$allowedLocales = $request->getContext()->getData('supportedSubmissionLocales');
 				$newSubmissionFile = Repo::submissionFile()->newDataObject();
 				$newSubmissionFile->setData('fileId', $fileId);
-				$newSubmissionFile->setData('name', array_fill_keys(array_keys($allowedLocales), $media["fileName"]));
+				// supportedSubmissionLocales is a list of locale codes: use the codes (not the list indexes) as keys
+				$newSubmissionFile->setData('name', array_fill_keys(array_values((array)$allowedLocales), $media["fileName"]));
 				$newSubmissionFile->setData('submissionId', $this->submission->getId());
 				$newSubmissionFile->setData('uploaderUserId', $request->getUser()->getId());
 				$newSubmissionFile->setData('assocType', Application::ASSOC_TYPE_SUBMISSION_FILE);
@@ -204,13 +207,46 @@ class TextureHandler extends Handler
 	}
 
 	/**
+	 * Serve an image (dependent file) of the XML document being edited.
+	 * Only files attached to an XML file of the authorized submission are served.
+	 */
+	public function media($args, $request): string
+	{
+		$fileId = (int)$request->getUserVar('fileId');
+		$assocId = (int)$request->getUserVar('assocId');
+
+		$submissionFile = Repo::submissionFile()->get($assocId);
+		if (!$submissionFile || (int)$submissionFile->getData('submissionId') !== $this->submission->getId()) {
+			throw new NotFoundHttpException();
+		}
+
+		$mediaFile = Repo::submissionFile()->getCollector()
+			->filterByAssoc(Application::ASSOC_TYPE_SUBMISSION_FILE, [$assocId])
+			->filterBySubmissionIds([$this->submission->getId()])
+			->filterByFileStages([SubmissionFile::SUBMISSION_FILE_DEPENDENT])
+			->includeDependentFiles()
+			->getMany()
+			->first(fn($file) => (int)$file->getData('fileId') === $fileId);
+
+		if (!$mediaFile || !app()->get('file')->fs->fileExists($mediaFile->getData('path'))) {
+			throw new NotFoundHttpException();
+		}
+
+		$content = app()->get('file')->fs->read($mediaFile->getData('path'));
+		header('Content-Type: ' . $mediaFile->getData('mimetype'));
+		header('Content-Length: ' . strlen($content));
+		return $content;
+	}
+
+	/**
 	 * Get genre id.
 	 */
 	private function getGenreId($request, $extension): null|int
 	{
 		/** @var GenreDAO $genreDao */
 		$genreDao = DAORegistry::getDAO('GenreDAO');
-		$genres = $genreDao->getByDependenceAndContextId(true, $request->getJournal()->getId());
+		// All enabled genres: the IMAGE genre is not always configured as a dependent genre
+		$genres = $genreDao->getEnabledByContextId($request->getJournal()->getId());
 
 		while ($candidateGenre = $genres->next()) {
 			if ($extension) {
@@ -240,10 +276,10 @@ class TextureHandler extends Handler
 		$modifiedDocument->loadXML($modifiedData);
 		$xpath = new DOMXpath($modifiedDocument);
 
-		if (!Services::get('file')->fs->fileExists($submissionFile->getData('path'))) {
+		if (!app()->get('file')->fs->fileExists($submissionFile->getData('path'))) {
 			return 0;
 		}
-		$manuscriptXml = Services::get('file')->fs->read($submissionFile->getData('path'));
+		$manuscriptXml = app()->get('file')->fs->read($submissionFile->getData('path'));
 		$origDocument = new DOMDocument('1.0', 'utf-8');
 		$modifiedData = XMLAmpersandEscaper::escapeAmpersands($modifiedData);
 		$origDocument->loadXML($manuscriptXml);
@@ -271,7 +307,7 @@ class TextureHandler extends Handler
 		$fileManager = new FileManager();
 		$extension = $fileManager->parseFileExtension($submissionFile->getData('path'));
 		$submissionDir = Repo::submissionFile()->getSubmissionDir($context->getData('id'), $submission->getData('id'));
-		$fileId = (int)Services::get('file')->add($tempName, $submissionDir . '/' . uniqid() . '.' . $extension);
+		$fileId = (int)app()->get('file')->add($tempName, $submissionDir . '/' . uniqid() . '.' . $extension);
 
 		Repo::submissionFile()->edit($submissionFile, [
 			'fileId' => $fileId,
